@@ -1,0 +1,22 @@
+# Target requirements
+-e ./trpv1_utils
+
+# Frozen requirements
+colorama==0.4.6
+joblib==1.5.3
+mordredcommunity==2.0.7
+networkx==3.6.1
+numpy==1.26.4
+packaging==26.1
+pandas==2.3.3
+pillow==12.2.0
+python-dateutil==2.9.0.post0
+pytz==2026.1.post1
+PyYAML==6.0.3
+rdkit==2026.3.1
+scikit-learn==1.8.0
+scipy==1.17.1
+six==1.17.0
+threadpoolctl==3.6.0
+tqdm==4.67.3
+tzdata==2026.2
