@@ -13,8 +13,8 @@ USE_PREFIT = False
 
 datasets = [
     "ames",
+    "cytotox",
     "dili",
-    "hepatotoxicity",
     "hlm",
     "mmp",
 ]
@@ -104,8 +104,9 @@ def main():
                 time_limit=time_limit * 60 if time_limit else None,  # type: ignore
                 presets="best_quality",
                 hyperparameters=custom_hyperparameters,  # type: ignore
-                num_stack_levels=2,  # Limit to prevent overfitting
                 dynamic_stacking=False,
+                num_stack_levels=0,  # Limit to prevent overfitting
+                num_bag_folds=5,
             )
         else:
             predictor = TabularPredictor.load(predictor_path)
