@@ -1,4 +1,9 @@
+import time
+from typing import Callable
+
 from autogluon.tabular import TabularPredictor
+import numpy as np
+from sklearn import metrics
 from specificity_metric import ag_specificity_scorer
 from autogluon.tabular.configs.hyperparameter_configs import get_hyperparameter_config
 from autogluon.common import space
@@ -7,148 +12,234 @@ import itertools as it
 import logging
 import pandas as pd
 from pathlib import Path
-
+from confidenceinterval import bootstrap
 
 USE_PREFIT = False
-
-datasets = [
+DATASETS = [
     "ames",
     "cytotox",
     "dili",
     "hlm",
     "mmp",
 ]
-
-featurizations = [
+FEATURIZATIONS = [
     "morgan_fp",
     "mordred_desc",
 ]
-
-time_limit = None
-eval_metric = "quadratic_kappa"
-extra_metrics = [
+CLASS_COL = "CLASS"
+TIME_LIMIT = None
+EVAL_METRIC = "quadratic_kappa"
+EXTRA_METRICS = [
     metric
     for metric in ["accuracy", "recall", ag_specificity_scorer, "quadratic_kappa"]
-    if metric != eval_metric
+    if metric != EVAL_METRIC
 ]
+
+
+def load_data(
+    dataset: str,
+    featurization: str,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    train_csv = f"data/preprocessed/{dataset}/{featurization}.train.csv"
+    test_csv = f"data/preprocessed/{dataset}/{featurization}.test.csv"
+    train = pd.read_csv(train_csv)
+    test = pd.read_csv(test_csv)
+
+    feature_cols = [col for col in train.columns if "FEATURE_" in col]
+    train = train[[CLASS_COL, *feature_cols]]
+    test = test[[CLASS_COL, *feature_cols]]
+
+    return train, test
+
+
+def get_fitted_predictor(
+    train: pd.DataFrame,
+    featurization: str,
+    predictor_file: str,
+) -> TabularPredictor:
+    custom_hyperparameters = get_hyperparameter_config("default")
+    extra_models = {
+        "KNN": {
+            "algorithm": "brute",
+            "p": 2,
+            "n_neighbors": space.Int(1, 20, default=10),
+            "weights": space.Categorical("uniform", "distance"),
+            "ag_args_fit": {"ignored_type_group_special": []},
+            "ag_args": {
+                "hyperparameter_tune_kwargs": {
+                    "num_trials": 20,
+                    "scheduler": "local",
+                    "searcher": "auto",
+                },
+            },
+        },
+        "LR": {},
+        # "EBM": {}, # No module named 'interpret'
+        # "TABM": {}, # Not enough memory
+    }
+    custom_hyperparameters.update(extra_models)
+
+    if featurization == "morgan_fp":
+        custom_hyperparameters[VNNModel] = {  # type: ignore
+            "smoothing_factor": space.Real(0.01, 1.0, default=0.3),
+            "ag_args": {
+                "hyperparameter_tune_kwargs": {
+                    "num_trials": 100,
+                    "scheduler": "local",
+                    "searcher": "auto",
+                },
+            },
+        }
+
+    if not USE_PREFIT:
+        predictor = TabularPredictor(
+            label=CLASS_COL,
+            path=predictor_file,
+            eval_metric=EVAL_METRIC,
+            log_to_file=True,
+        ).fit(
+            train_data=train,
+            time_limit=TIME_LIMIT * 60 if TIME_LIMIT else None,  # type: ignore
+            presets="best_quality",
+            hyperparameters=custom_hyperparameters,  # type: ignore
+            dynamic_stacking=False,
+            num_stack_levels=0,  # Limit to prevent overfitting
+            num_bag_folds=5,
+        )
+    else:
+        predictor = TabularPredictor.load(predictor_file)
+    return predictor
+
+
+def conf_interval_dict(
+    y_test: np.ndarray,
+    y_pred: np.ndarray,
+    key: str,
+    metric: Callable,
+    **kwargs,
+) -> dict:
+    ci = bootstrap.bootstrap_ci(
+        y_true=y_test.tolist(),
+        y_pred=y_pred.tolist(),
+        metric=lambda y_pred, y_true: metric(y_pred, y_true, **kwargs),
+    )
+    return {
+        key: ci[0],
+        f"{key}-confidence_interval": f"({ci[1][0]:.2}, {ci[1][1]:.2})",
+    }
+
+
+def save_leaderboards(
+    predictor: TabularPredictor,
+    test: pd.DataFrame,
+    leaderboard_file: str,
+    top_ensemble_leaderboard_file: str,
+):
+    leaderboard = predictor.leaderboard(
+        extra_metrics=EXTRA_METRICS,
+        data=test,
+        extra_info=True,
+    )
+    leaderboard = leaderboard.sort_values("score_val", ascending=False)
+    leaderboard = leaderboard.reset_index(drop=True)
+    leaderboard.to_csv(leaderboard_file)
+
+    # Add the top performing model to the set to explore
+    to_explore: set[str] = {leaderboard["model"][0]}
+    top_performing_ensemble_models: set[str] = set()
+    while to_explore:
+        model = to_explore.pop()
+        model_idx = leaderboard["model"] == model
+        # Get all features of this model that are the outputs of other models
+        features = {
+            feature
+            for feature in leaderboard["features"][model_idx].iloc[0]
+            if "FEATURE_" not in feature
+        }
+        to_explore.update(features.difference(top_performing_ensemble_models))
+        top_performing_ensemble_models.add(model)
+
+    top_performing_ensemble_leaderboard = leaderboard[
+        leaderboard["model"].isin(top_performing_ensemble_models)
+    ]
+    top_performing_ensemble_leaderboard.to_csv(top_ensemble_leaderboard_file)
+
+
+def save_top_model_metrics(
+    predictor: TabularPredictor,
+    test: pd.DataFrame,
+    top_performing_metrics_file: str,
+):
+    y_test = test[CLASS_COL].to_numpy()
+    start = time.perf_counter()
+    y_pred: np.ndarray = predictor.predict(test)  # type: ignore
+    pred_time = time.perf_counter() - start
+
+    performance = {
+        **conf_interval_dict(y_test, y_pred, "kappa", metrics.cohen_kappa_score),
+        **conf_interval_dict(y_test, y_pred, "accuracy", metrics.accuracy_score),
+        **conf_interval_dict(
+            y_test, y_pred, "recall", metrics.recall_score, pos_label=1
+        ),
+        **conf_interval_dict(
+            y_test, y_pred, "specificity", metrics.recall_score, pos_label=0
+        ),
+        "kappa_val": predictor.leaderboard()["score_val"][0],
+        "pred_time": pred_time,
+    }
+    pd.DataFrame([performance]).to_csv(top_performing_metrics_file)
 
 
 def main():
     logger = logging.getLogger(__name__)
     logging.basicConfig(level=logging.INFO)
     logger.info("Starting")
-    for dataset, featurization in it.product(datasets, featurizations):
+    for dataset, featurization in it.product(DATASETS, FEATURIZATIONS):
         logger.info(f"Working on {dataset} {featurization} data")
 
+        # Load data
         logger.info(f"{dataset} {featurization} - Loading in preprocessed data")
-        train_csv = f"data/preprocessed/{dataset}/{featurization}.train.csv"
-        test_csv = f"data/preprocessed/{dataset}/{featurization}.test.csv"
-        train = pd.read_csv(train_csv)
-        test = pd.read_csv(test_csv)
+        train, test = load_data(dataset, featurization)
 
-        class_col = "CLASS"
-        feature_cols = [col for col in train.columns if "FEATURE_" in col]
-        train = train[[class_col, *feature_cols]]
-        test = test[[class_col, *feature_cols]]
-
+        # Get filenames
         time_limit_str = (
-            f"{time_limit}min" if time_limit is not None else "no_time_limit"
+            f"{TIME_LIMIT}min" if TIME_LIMIT is not None else "no_time_limit"
         )
-        config_id_str = f"{dataset}.{featurization}.{eval_metric}.{time_limit_str}"
-
-        logger.info(f"{dataset} {featurization} - Configuring AutoGluon predictor")
-        custom_hyperparameters = get_hyperparameter_config("default")
-        extra_models = {
-            "KNN": {
-                "algorithm": "brute",
-                "p": 2,
-                "n_neighbors": space.Int(1, 20, default=10),
-                "weights": space.Categorical("uniform", "distance"),
-                "ag_args_fit": {"ignored_type_group_special": []},
-                "ag_args": {
-                    "hyperparameter_tune_kwargs": {
-                        "num_trials": 20,
-                        "scheduler": "local",
-                        "searcher": "auto",
-                    },
-                },
-            },
-            "LR": {},
-            # "EBM": {}, # No module named 'interpret'
-            # "TABM": {}, # Not enough memory
-        }
-        custom_hyperparameters.update(extra_models)
-
-        if featurization == "morgan_fp":
-            custom_hyperparameters[VNNModel] = {  # type: ignore
-                "smoothing_factor": space.Real(0.01, 1.0, default=0.3),
-                "ag_args": {
-                    "hyperparameter_tune_kwargs": {
-                        "num_trials": 100,
-                        "scheduler": "local",
-                        "searcher": "auto",
-                    },
-                },
-            }
+        config_id_str = f"{dataset}.{featurization}.{EVAL_METRIC}.{time_limit_str}"
+        leaderboard_file = f"autogluon/leaderboards/leaderboard.{config_id_str}.csv"
+        top_ensemble_leaderboard_file = (
+            f"autogluon/leaderboards/leaderboard.{config_id_str}.top_ensemble.csv"
+        )
+        predictor_file = f"autogluon/models/model.{config_id_str}"
+        top_performing_metrics_file = (
+            f"autogluon/top_models/top_model.{config_id_str}.csv"
+        )
+        for directory in ["leaderboards", "models", "top_models"]:
+            Path(f"autogluon/{directory}").mkdir(exist_ok=True)
 
         logger.info(f"{dataset} {featurization} - Fitting AutoGluon predictor")
-        predictor_path = f"autogluon/models/model.{config_id_str}"
-        if not USE_PREFIT:
-            predictor = TabularPredictor(
-                label=class_col,
-                path=predictor_path,
-                eval_metric=eval_metric,
-                log_to_file=True,
-            ).fit(
-                train_data=train,
-                time_limit=time_limit * 60 if time_limit else None,  # type: ignore
-                presets="best_quality",
-                hyperparameters=custom_hyperparameters,  # type: ignore
-                dynamic_stacking=False,
-                num_stack_levels=0,  # Limit to prevent overfitting
-                num_bag_folds=5,
-            )
-        else:
-            predictor = TabularPredictor.load(predictor_path)
-
-        logger.info(f"{dataset} {featurization} - Creating leaderboard")
-        leaderboard = predictor.leaderboard(
-            extra_metrics=extra_metrics,
-            data=test,
-            extra_info=True,
+        predictor = get_fitted_predictor(
+            train,
+            featurization,
+            predictor_file,
         )
-        leaderboard = leaderboard.sort_values("score_val", ascending=False)
-        leaderboard = leaderboard.reset_index(drop=True)
 
-        logger.info(f"{dataset} {featurization} - Saving leaderboard")
-        Path("autogluon/leaderboards").mkdir(exist_ok=True)
-        leaderboard.to_csv(f"autogluon/leaderboards/leaderboard.{config_id_str}.csv")
+        logger.info(f"{dataset} {featurization} - Saving leaderboards")
+        save_leaderboards(
+            predictor,
+            test,
+            leaderboard_file,
+            top_ensemble_leaderboard_file,
+        )
 
+        # Get performance metrics for the top model
         logger.info(
-            f"{dataset} {featurization} - Creating a leaderboard of models included in top performing ensemble"
+            f"{dataset} {featurization} - Saving performance metrics for the top model"
         )
-        # Add the top performing model to the set to explore
-        to_explore: set[str] = {leaderboard["model"][0]}
-        top_performing_ensemble_models: set[str] = set()
-        while to_explore:
-            model = to_explore.pop()
-            model_idx = leaderboard["model"] == model
-            # Get all features of this model that are the outputs of other models
-            features = {
-                feature
-                for feature in leaderboard["features"][model_idx].iloc[0]
-                if "FEATURE_" not in feature
-            }
-            to_explore.update(features.difference(top_performing_ensemble_models))
-            top_performing_ensemble_models.add(model)
-
-        top_performing_ensemble_leaderboard = leaderboard[
-            leaderboard["model"].isin(top_performing_ensemble_models)
-        ]
-
-        logger.info(f"{dataset} {featurization} - Saving ensemble leaderboard")
-        top_performing_ensemble_leaderboard.to_csv(
-            f"autogluon/leaderboards/leaderboard.{config_id_str}.top_ensemble.csv"
+        save_top_model_metrics(
+            predictor,
+            test,
+            top_performing_metrics_file,
         )
 
 

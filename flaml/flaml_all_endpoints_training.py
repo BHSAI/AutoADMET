@@ -1,4 +1,6 @@
+from confidenceinterval import bootstrap
 from pathlib import Path
+from typing import Callable
 
 import pandas as pd
 import numpy as np
@@ -14,7 +16,7 @@ import time
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 
-USE_PREFIT = False
+USE_PREFIT = True  # Set to true to regenerate plots and metrics without refitting
 DATASETS = [
     "ames",
     "cytotox",
@@ -26,7 +28,7 @@ FEATURIZATIONS = [
     "morgan_fp",
     "mordred_desc",
 ]
-TIME_LIMIT = 15
+TIME_LIMIT = 15  # in minutes
 SEED = 7654321
 
 
@@ -60,9 +62,9 @@ def load_data(
 
     class_col = "CLASS"
     feature_cols = [col for col in train.columns if "FEATURE_" in col]
-    X_train = train[feature_cols]
+    X_train = train[feature_cols].copy()
     y_train = train[class_col].to_numpy()
-    X_test = test[feature_cols]
+    X_test = test[feature_cols].copy()
     y_test = test[class_col].to_numpy()
 
     if featurization == "mordred_desc":
@@ -125,6 +127,24 @@ def get_fitted_automl(
     return automl
 
 
+def conf_interval_dict(
+    y_test: np.ndarray,
+    y_pred: np.ndarray,
+    key: str,
+    metric: Callable,
+    **kwargs,
+) -> dict:
+    ci = bootstrap.bootstrap_ci(
+        y_true=y_test.tolist(),
+        y_pred=y_pred.tolist(),
+        metric=lambda y_pred, y_true: metric(y_pred, y_true, **kwargs),
+    )
+    return {
+        key: ci[0],
+        f"{key}-confidence_interval": f"({ci[1][0]:.2}, {ci[1][1]:.2})",
+    }
+
+
 def save_top_model_metrics(
     automl: AutoML,
     X_test: pd.DataFrame,
@@ -136,14 +156,17 @@ def save_top_model_metrics(
     pred_time = time.perf_counter() - start
 
     performance = {
-        "kappa": metrics.cohen_kappa_score(y_pred, y_test),
-        "accuracy": metrics.accuracy_score(y_pred, y_test),
-        "recall": metrics.recall_score(y_pred, y_test, pos_label=1),
-        "specificity": metrics.recall_score(y_pred, y_test, pos_label=0),
+        **conf_interval_dict(y_test, y_pred, "kappa", metrics.cohen_kappa_score),
+        **conf_interval_dict(y_test, y_pred, "accuracy", metrics.accuracy_score),
+        **conf_interval_dict(
+            y_test, y_pred, "recall", metrics.recall_score, pos_label=1
+        ),
+        **conf_interval_dict(
+            y_test, y_pred, "specificity", metrics.recall_score, pos_label=0
+        ),
         "kappa_val": 1 - automl.best_loss,
-        "pred_time": 1 - pred_time,
+        "pred_time": pred_time,
     }
-    Path("flaml/top_models").mkdir(exist_ok=True)
     pd.DataFrame([performance]).to_csv(top_performing_metrics_file)
 
 
@@ -180,6 +203,7 @@ def save_fit_history_plot(log_file: str, plot_file: str):
             )
         ]
     )
+    plt.clf()
     plt.title("Learning Curve")
     plt.xlabel("Wall Clock Time (s)")
     plt.ylabel("Validation Kappa")
@@ -219,17 +243,24 @@ def main():
         log_file = f"flaml/logs/{config_id_str}.log"
         pkl_file = f"flaml/models/model.{config_id_str}.pkl"
         top_performing_metrics_file = f"flaml/top_models/top_model.{config_id_str}.csv"
-        plot_file = f"flaml/plots/plot.{config_id_str}.csv"
+        plot_file = f"flaml/plots/plot.{config_id_str}.png"
         for directory in ["logs", "models", "top_models", "plots"]:
             Path(f"flaml/{directory}").mkdir(exist_ok=True)
 
         # Fit the automl object
+        logger.info(f"{dataset} {featurization} - Fitting the FLAML automl object")
         automl = get_fitted_automl(X_train, y_train, featurization, log_file, pkl_file)
 
         # Get performance metrics for the top model
+        logger.info(
+            f"{dataset} {featurization} - Saving performance metrics for the top model"
+        )
         save_top_model_metrics(automl, X_test, y_test, top_performing_metrics_file)
 
         # Make training history plot
+        logger.info(
+            f"{dataset} {featurization} - Saving performance to time plot for model history"
+        )
         save_fit_history_plot(log_file, plot_file)
 
 
