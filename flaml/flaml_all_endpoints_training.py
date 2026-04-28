@@ -3,6 +3,7 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 from flaml import AutoML
+from flaml.automl import data
 import pickle
 import vnn_estimator_flaml
 from sklearn.preprocessing import MinMaxScaler
@@ -10,26 +11,23 @@ import logging
 import itertools as it
 import sklearn.metrics as metrics
 import time
-
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
 
 USE_PREFIT = False
-
-datasets = [
+DATASETS = [
     "ames",
     "cytotox",
     "dili",
     "hlm",
     "mmp",
 ]
-
-featurizations = [
+FEATURIZATIONS = [
     "morgan_fp",
     "mordred_desc",
 ]
-
-time_limit = 15
-
-seed = 7654321
+TIME_LIMIT = 15
+SEED = 7654321
 
 
 def cohen_kappa(
@@ -49,101 +47,190 @@ def cohen_kappa(
     return 1 - metrics.cohen_kappa_score(y_pred, y_val), {}
 
 
+def load_data(
+    dataset: str,
+    featurization: str,
+) -> tuple[pd.DataFrame, np.ndarray, pd.DataFrame, np.ndarray]:
+    train_csv = f"data/preprocessed/{dataset}/{featurization}.train.csv"
+    test_csv = f"data/preprocessed/{dataset}/{featurization}.test.csv"
+    train = pd.read_csv(train_csv)
+    train.columns = train.columns.astype(np.str_)
+    test = pd.read_csv(test_csv)
+    test.columns = test.columns.astype(np.str_)
+
+    class_col = "CLASS"
+    feature_cols = [col for col in train.columns if "FEATURE_" in col]
+    X_train = train[feature_cols]
+    y_train = train[class_col].to_numpy()
+    X_test = test[feature_cols]
+    y_test = test[class_col].to_numpy()
+
+    if featurization == "mordred_desc":
+        scaler = MinMaxScaler()
+        scaler.fit(pd.concat([X_train, X_test]))
+
+        X_train[X_train.columns] = scaler.transform(X_train)
+        X_test[X_test.columns] = scaler.transform(X_test)
+
+    return X_train, y_train, X_test, y_test
+
+
+def get_fitted_automl(
+    X_train: pd.DataFrame,
+    y_train: np.ndarray,
+    featurization: str,
+    log_file: str,
+    pkl_file: str,
+) -> AutoML:
+    settings = {
+        "time_budget": TIME_LIMIT * 60,  # total running time in seconds
+        "task": "classification",  # task type
+        "log_file_name": log_file,  # flaml log file
+        "seed": SEED,  # random seed
+        "ensemble": True,
+        "metric": cohen_kappa,
+        "eval_method": "cv",
+        "log_type": "all",
+    }
+
+    automl = AutoML()
+
+    if featurization == "morgan_fp":
+        settings["estimator_list"] = [
+            "lgbm",
+            "rf",
+            "xgboost",
+            "extra_tree",
+            "xgb_limitdepth",
+            "sgd",
+            "catboost",
+            "lrl1",
+            "vnn",
+        ]
+        automl.add_learner("vnn", vnn_estimator_flaml.VNNEstimator)
+
+    if not USE_PREFIT:
+        automl.fit(
+            X_train=X_train,
+            y_train=y_train,
+            **settings,
+        )
+        Path("flaml/models").mkdir(exist_ok=True)
+        with open(pkl_file, "wb") as f:
+            pickle.dump(automl, f, pickle.HIGHEST_PROTOCOL)
+    else:
+        with open(pkl_file, "rb") as f:
+            automl = pickle.load(f)
+
+    return automl
+
+
+def save_top_model_metrics(
+    automl: AutoML,
+    X_test: pd.DataFrame,
+    y_test: np.ndarray,
+    top_performing_metrics_file: str,
+):
+    start = time.perf_counter()
+    y_pred: np.ndarray = automl.predict(X_test)  # type: ignore
+    pred_time = time.perf_counter() - start
+
+    performance = {
+        "kappa": metrics.cohen_kappa_score(y_pred, y_test),
+        "accuracy": metrics.accuracy_score(y_pred, y_test),
+        "recall": metrics.recall_score(y_pred, y_test, pos_label=1),
+        "specificity": metrics.recall_score(y_pred, y_test, pos_label=0),
+        "kappa_val": 1 - automl.best_loss,
+        "pred_time": 1 - pred_time,
+    }
+    Path("flaml/top_models").mkdir(exist_ok=True)
+    pd.DataFrame([performance]).to_csv(top_performing_metrics_file)
+
+
+def save_fit_history_plot(log_file: str, plot_file: str):
+    (
+        time_history,
+        best_valid_loss_history,
+        valid_loss_history,
+        config_history,
+        metric_history,
+    ) = data.get_output_from_log(filename=log_file, time_budget=TIME_LIMIT * 60)
+    estimator_list = [
+        "lgbm",
+        "rf",
+        "xgboost",
+        "extra",
+        "xgb",
+        "sgd",
+        "catboost",
+        "lrl1",
+        "vnn",
+    ]
+    tableau = list(mcolors.TABLEAU_COLORS.values())[: len(estimator_list)]
+    colors = {estimator: color for estimator, color in zip(estimator_list, tableau)}
+    history = pd.DataFrame(
+        [
+            {
+                "learner": config["Current Learner"],
+                "time": time,
+                "loss": loss,
+            }
+            for config, time, loss in zip(
+                config_history, time_history, valid_loss_history
+            )
+        ]
+    )
+    plt.title("Learning Curve")
+    plt.xlabel("Wall Clock Time (s)")
+    plt.ylabel("Validation Kappa")
+    for learner, color in colors.items():
+        df_slice = history[history["learner"] == learner]
+        if df_slice.shape[0]:
+            plt.scatter(
+                x=df_slice["time"],
+                y=1 - df_slice["loss"],
+                color=color,
+                label=learner,
+            )
+    plt.step(
+        time_history,
+        1 - np.array(best_valid_loss_history),
+        where="post",
+        c=mcolors.CSS4_COLORS["black"],
+    )
+    plt.legend()
+    plt.savefig(plot_file)
+
+
 def main():
     logger = logging.getLogger(__name__)
     logging.basicConfig(level=logging.INFO)
     logger.info("Starting")
-    for dataset, featurization in it.product(datasets, featurizations):
+
+    for dataset, featurization in it.product(DATASETS, FEATURIZATIONS):
         logger.info(f"Working on {dataset} {featurization} data")
 
+        # Load data
         logger.info(f"{dataset} {featurization} - Loading in preprocessed data")
-        train_csv = f"data/preprocessed/{dataset}/{featurization}.train.csv"
-        test_csv = f"data/preprocessed/{dataset}/{featurization}.test.csv"
-        train = pd.read_csv(train_csv)
-        train.columns = train.columns.astype(np.str_)
-        test = pd.read_csv(test_csv)
-        test.columns = test.columns.astype(np.str_)
+        X_train, y_train, X_test, y_test = load_data(dataset, featurization)
 
-        class_col = "CLASS"
-        feature_cols = [col for col in train.columns if "FEATURE_" in col]
-        X_train = train[feature_cols]
-        y_train = train[class_col].to_numpy()
-        X_test = test[feature_cols]
-        y_test = test[class_col].to_numpy()
+        # Get filenames
+        config_id_str = f"{dataset}.{featurization}.{TIME_LIMIT}min"
+        log_file = f"flaml/logs/{config_id_str}.log"
+        pkl_file = f"flaml/models/model.{config_id_str}.pkl"
+        top_performing_metrics_file = f"flaml/top_models/top_model.{config_id_str}.csv"
+        plot_file = f"flaml/plots/plot.{config_id_str}.csv"
+        for directory in ["logs", "models", "top_models", "plots"]:
+            Path(f"flaml/{directory}").mkdir(exist_ok=True)
 
-        time_limit_str = (
-            f"{time_limit}min" if time_limit is not None else "no_time_limit"
-        )
-        config_id_str = f"{dataset}.{featurization}.{time_limit_str}"
-
-        Path("flaml/logs").mkdir(exist_ok=True)
-        settings = {
-            "time_budget": time_limit * 60,  # total running time in seconds
-            "task": "classification",  # task type
-            "log_file_name": f"flaml/logs/{config_id_str}.log",  # flaml log file
-            "seed": seed,  # random seed
-            "ensemble": True,
-            "metric": cohen_kappa,
-            "eval_method": "cv",
-            "log_type": "all",
-        }
-
-        automl = AutoML()
-
-        if featurization == "morgan_fp":
-            settings["estimator_list"] = [
-                "lgbm",
-                "rf",
-                "xgboost",
-                "extra_tree",
-                "xgb_limitdepth",
-                "sgd",
-                "catboost",
-                "lrl1",
-                "vnn",
-            ]
-
-            automl.add_learner("vnn", vnn_estimator_flaml.VNNEstimator)
-        else:
-            scaler = MinMaxScaler()
-            scaler.fit(pd.concat([X_train, X_test]))
-
-            X_train[X_train.columns] = scaler.transform(X_train)
-            X_test[X_test.columns] = scaler.transform(X_test)
-
-        logger.info(f"{dataset} {featurization} - Fitting FLAML predictor")
-        predictor_path = f"flaml/models/model.{config_id_str}.pkl"
-        if not USE_PREFIT:
-            automl.fit(
-                X_train=X_train,
-                y_train=y_train,
-                **settings,
-            )
-            Path("flaml/models").mkdir(exist_ok=True)
-            with open(predictor_path, "wb") as f:
-                pickle.dump(automl, f, pickle.HIGHEST_PROTOCOL)
-        else:
-            with open(predictor_path, "rb") as f:
-                automl = pickle.load(f)
+        # Fit the automl object
+        automl = get_fitted_automl(X_train, y_train, featurization, log_file, pkl_file)
 
         # Get performance metrics for the top model
+        save_top_model_metrics(automl, X_test, y_test, top_performing_metrics_file)
 
-        start = time.perf_counter()
-        y_pred: np.ndarray = automl.predict(X_test)  # type: ignore
-        pred_time = time.perf_counter() - start
-
-        performance = {
-            "kappa": metrics.cohen_kappa_score(y_pred, y_test),
-            "accuracy": metrics.accuracy_score(y_pred, y_test),
-            "recall": metrics.recall_score(y_pred, y_test, pos_label=1),
-            "specificity": metrics.recall_score(y_pred, y_test, pos_label=0),
-            "kappa_val": 1 - automl.best_loss,
-            "pred_time": 1 - pred_time,
-        }
-        Path("flaml/top_models").mkdir(exist_ok=True)
-        pd.DataFrame([performance]).to_csv(
-            f"flaml/top_models/top_model.{config_id_str}.csv"
-        )
+        # Make training history plot
+        save_fit_history_plot(log_file, plot_file)
 
 
 if __name__ == "__main__":
