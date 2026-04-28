@@ -12,13 +12,13 @@ class VNNEstimator(SKLearnEstimator):
             task = task_factory(task)
 
         if task.is_classification():
-            from vnn.variable_nearest_neighbor_classifier import (
+            from vnn.variable_nearest_neighbor import (
                 VariableNearestNeighborsClassifier,
             )
 
             self.estimator_class = VariableNearestNeighborsClassifier
         else:
-            from vnn.variable_nearest_neighbor_classifier import (
+            from vnn.variable_nearest_neighbor import (
                 VariableNearestNeighborsRegressor,
             )
 

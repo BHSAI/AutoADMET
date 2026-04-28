@@ -4,3 +4,5 @@ preprocessed
 models
 leaderboards
 logs
+top_models
+catboost*

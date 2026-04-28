@@ -8,15 +8,16 @@ import vnn_estimator_flaml
 from sklearn.preprocessing import MinMaxScaler
 import logging
 import itertools as it
-from sklearn.metrics import cohen_kappa_score
+import sklearn.metrics as metrics
+import time
 
 
 USE_PREFIT = False
 
 datasets = [
     "ames",
+    "cytotox",
     "dili",
-    "hepatotoxicity",
     "hlm",
     "mmp",
 ]
@@ -26,7 +27,7 @@ featurizations = [
     "mordred_desc",
 ]
 
-time_limit = 240
+time_limit = 15
 
 seed = 7654321
 
@@ -45,7 +46,7 @@ def cohen_kappa(
     groups_train=None,
 ):
     y_pred = estimator.predict(X_val)
-    return 1 - cohen_kappa_score(y_pred, y_val), {}
+    return 1 - metrics.cohen_kappa_score(y_pred, y_val), {}
 
 
 def main():
@@ -74,7 +75,7 @@ def main():
             f"{time_limit}min" if time_limit is not None else "no_time_limit"
         )
         config_id_str = f"{dataset}.{featurization}.{time_limit_str}"
-        
+
         Path("flaml/logs").mkdir(exist_ok=True)
         settings = {
             "time_budget": time_limit * 60,  # total running time in seconds
@@ -90,19 +91,18 @@ def main():
         automl = AutoML()
 
         if featurization == "morgan_fp":
-            settings["estimator_list"] = (
-                [
-                    "lgbm",
-                    "rf",
-                    "xgboost",
-                    "extra_tree",
-                    "xgb_limitdepth",
-                    "sgd",
-                    "catboost",
-                    "lrl1",
-                    "vnn",
-                ],
-            )
+            settings["estimator_list"] = [
+                "lgbm",
+                "rf",
+                "xgboost",
+                "extra_tree",
+                "xgb_limitdepth",
+                "sgd",
+                "catboost",
+                "lrl1",
+                "vnn",
+            ]
+
             automl.add_learner("vnn", vnn_estimator_flaml.VNNEstimator)
         else:
             scaler = MinMaxScaler()
@@ -111,8 +111,8 @@ def main():
             X_train[X_train.columns] = scaler.transform(X_train)
             X_test[X_test.columns] = scaler.transform(X_test)
 
-        logger.info(f"{dataset} {featurization} - Fitting AutoGluon predictor")
-        predictor_path = f'flaml/models/model.{config_id_str}.pkl'
+        logger.info(f"{dataset} {featurization} - Fitting FLAML predictor")
+        predictor_path = f"flaml/models/model.{config_id_str}.pkl"
         if not USE_PREFIT:
             automl.fit(
                 X_train=X_train,
@@ -120,11 +120,30 @@ def main():
                 **settings,
             )
             Path("flaml/models").mkdir(exist_ok=True)
-            with open(predictor_path, 'wb') as f:
+            with open(predictor_path, "wb") as f:
                 pickle.dump(automl, f, pickle.HIGHEST_PROTOCOL)
         else:
-            with open(predictor_path, 'rb') as f:
+            with open(predictor_path, "rb") as f:
                 automl = pickle.load(f)
+
+        # Get performance metrics for the top model
+
+        start = time.perf_counter()
+        y_pred: np.ndarray = automl.predict(X_test)  # type: ignore
+        pred_time = time.perf_counter() - start
+
+        performance = {
+            "kappa": metrics.cohen_kappa_score(y_pred, y_test),
+            "accuracy": metrics.accuracy_score(y_pred, y_test),
+            "recall": metrics.recall_score(y_pred, y_test, pos_label=1),
+            "specificity": metrics.recall_score(y_pred, y_test, pos_label=0),
+            "kappa_val": 1 - automl.best_loss,
+            "pred_time": 1 - pred_time,
+        }
+        Path("flaml/top_models").mkdir(exist_ok=True)
+        pd.DataFrame([performance]).to_csv(
+            f"flaml/top_models/top_model.{config_id_str}.csv"
+        )
 
 
 if __name__ == "__main__":
