@@ -125,7 +125,8 @@ def conf_interval_dict(
     )
     return {
         key: ci[0],
-        f"{key}-confidence_interval": f"({ci[1][0]:.2}, {ci[1][1]:.2})",
+        f"{key}-lb": ci[1][0],
+        f"{key}-ub": ci[1][1],
     }
 
 
