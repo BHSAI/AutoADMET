@@ -11,8 +11,8 @@ import time
 import vnn.vnn_admet as vnn_admet
 from vnn.variable_nearest_neighbor import VariableNearestNeighborsClassifier
 from scipy.sparse import coo_array
+import argparse
 
-USE_PREFIT = False
 DATASETS = [
     "ames",
     "cytotox",
@@ -95,7 +95,7 @@ def save_top_model_metrics(
     pd.DataFrame([performance]).to_csv(top_performing_metrics_file, index=False)
 
 
-def main():
+def main(use_prefit: bool):
     logger = logging.getLogger(__name__)
     logging.basicConfig(level=logging.INFO)
     logger.info("Starting")
@@ -117,7 +117,7 @@ def main():
 
         # Fit the automl object
         logger.info(f"{dataset} {featurization} - Hyperparameter optimizing vNN")
-        if not USE_PREFIT:
+        if not use_prefit:
             grid_search_results = vnn_admet.run_grid_search(
                 coo_array(X_train),
                 y_train,
@@ -153,4 +153,12 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--use_prefit",
+        action="store_true",
+        help="Set this flag to skip training when regenerating performance data.",
+    )
+    args = parser.parse_args()
+
+    main(args.use_prefit)

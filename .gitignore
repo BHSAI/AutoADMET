@@ -7,3 +7,4 @@ logs
 top_models
 plots
 catboost*
+visualization/out

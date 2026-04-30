@@ -13,8 +13,8 @@ import logging
 import pandas as pd
 from pathlib import Path
 from confidenceinterval import bootstrap
+import argparse
 
-USE_PREFIT = False
 DATASETS = [
     "ames",
     "cytotox",
@@ -56,6 +56,7 @@ def get_fitted_predictor(
     train: pd.DataFrame,
     featurization: str,
     predictor_file: str,
+    use_prefit: bool,
 ) -> TabularPredictor:
     custom_hyperparameters = get_hyperparameter_config("default")
     extra_models = {
@@ -91,7 +92,7 @@ def get_fitted_predictor(
             },
         }
 
-    if not USE_PREFIT:
+    if not use_prefit:
         predictor = TabularPredictor(
             label=CLASS_COL,
             path=predictor_file,
@@ -188,10 +189,10 @@ def save_top_model_metrics(
         "kappa_val": predictor.leaderboard()["score_val"][0],
         "pred_time": pred_time,
     }
-    pd.DataFrame([performance]).to_csv(top_performing_metrics_file)
+    pd.DataFrame([performance]).to_csv(top_performing_metrics_file, index=False)
 
 
-def main():
+def main(use_prefit: bool):
     logger = logging.getLogger(__name__)
     logging.basicConfig(level=logging.INFO)
     logger.info("Starting")
@@ -220,9 +221,7 @@ def main():
 
         logger.info(f"{dataset} {featurization} - Fitting AutoGluon predictor")
         predictor = get_fitted_predictor(
-            train,
-            featurization,
-            predictor_file,
+            train, featurization, predictor_file, use_prefit
         )
 
         logger.info(f"{dataset} {featurization} - Saving leaderboards")
@@ -245,4 +244,12 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--use_prefit",
+        action="store_true",
+        help="Set this flag to skip training when regenerating performance data.",
+    )
+    args = parser.parse_args()
+
+    main(args.use_prefit)

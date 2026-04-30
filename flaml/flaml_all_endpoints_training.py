@@ -15,8 +15,8 @@ import sklearn.metrics as metrics
 import time
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
+import argparse
 
-USE_PREFIT = True  # Set to true to regenerate plots and metrics without refitting
 DATASETS = [
     "ames",
     "cytotox",
@@ -83,6 +83,7 @@ def get_fitted_automl(
     featurization: str,
     log_file: str,
     pkl_file: str,
+    use_prefit: bool,
 ) -> AutoML:
     settings = {
         "time_budget": TIME_LIMIT * 60,  # total running time in seconds
@@ -111,7 +112,7 @@ def get_fitted_automl(
         ]
         automl.add_learner("vnn", vnn_estimator_flaml.VNNEstimator)
 
-    if not USE_PREFIT:
+    if not use_prefit:
         automl.fit(
             X_train=X_train,
             y_train=y_train,
@@ -168,7 +169,7 @@ def save_top_model_metrics(
         "kappa_val": 1 - automl.best_loss,
         "pred_time": pred_time,
     }
-    pd.DataFrame([performance]).to_csv(top_performing_metrics_file)
+    pd.DataFrame([performance]).to_csv(top_performing_metrics_file, index=False)
 
 
 def save_fit_history_plot(log_file: str, plot_file: str):
@@ -227,7 +228,7 @@ def save_fit_history_plot(log_file: str, plot_file: str):
     plt.savefig(plot_file)
 
 
-def main():
+def main(use_prefit: bool):
     logger = logging.getLogger(__name__)
     logging.basicConfig(level=logging.INFO)
     logger.info("Starting")
@@ -250,7 +251,9 @@ def main():
 
         # Fit the automl object
         logger.info(f"{dataset} {featurization} - Fitting the FLAML automl object")
-        automl = get_fitted_automl(X_train, y_train, featurization, log_file, pkl_file)
+        automl = get_fitted_automl(
+            X_train, y_train, featurization, log_file, pkl_file, use_prefit
+        )
 
         # Get performance metrics for the top model
         logger.info(
@@ -266,4 +269,12 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--use_prefit",
+        action="store_true",
+        help="Set this flag to skip training when regenerating performance data.",
+    )
+    args = parser.parse_args()
+
+    main(args.use_prefit)
