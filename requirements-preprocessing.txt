@@ -1,5 +1,5 @@
 # Target requirements
--e ./trpv1_utils
+-e ./preprocessing/trpv1_utils
 
 # Frozen requirements
 colorama==0.4.6
