@@ -18,7 +18,7 @@ FEATURIZATIONS = ["morgan_fp", "mordred_desc"]
 
 
 def main():
-    Path("data_visualization/out").mkdir(exist_ok=True, parents=False)
+    Path("visualization/out").mkdir(exist_ok=True)
 
     vnn_performances = []
     for dataset in DATASETS:
@@ -55,7 +55,7 @@ def main():
         ]
     )
     combined_performance_df.to_csv(
-        "data_visualization/out/combined_performance.csv", index=False
+        "visualization/out/combined_performance.csv", index=False
     )
 
 
@@ -109,7 +109,7 @@ def main():
             )
         ax.legend(*zip(*handles), bbox_to_anchor=(1, 1), loc="upper left")
 
-        fig.savefig(f"data_visualization/out/confidence_intervals.{metric}.png", bbox_inches="tight")
+        fig.savefig(f"visualization/out/confidence_intervals.{metric}.png", bbox_inches="tight")
 
 
 if __name__ == "__main__":
