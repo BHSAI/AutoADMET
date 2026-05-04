@@ -38,7 +38,7 @@ To fit predictors using the frameworks run the following:
 
 **FLAML:** `flaml\flaml_all_endpoints_training.py`
 
-All three of the above scripts include an option `--use_prefit` to skip fitting a predictor and use a previously fitted predictor to generate performance metrics--useful if you are changing how the performance metrics are reported.
+All three of the above scripts include an option `--use_prefit` to skip fitting a predictor and use a previously fitted predictor to generate performance metrics—useful if you are changing how the performance metrics are reported.
 
 # Visualization
 
