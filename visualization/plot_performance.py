@@ -63,7 +63,7 @@ def main():
 
     flaml_performances: list[pd.DataFrame] = []
     for dataset, featurization in it.product(DATASETS, FEATURIZATIONS):
-        filename = f"flaml/top_models/top_model.{dataset}.{featurization}.15min.csv"
+        filename = f"flaml/top_models/top_model.{dataset}.{featurization}.75min.csv"
         df = pd.read_csv(filename)
         df.insert(0, "featurization", featurization)
         df.insert(0, "dataset", dataset)

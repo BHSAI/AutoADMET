@@ -182,6 +182,7 @@ def main(use_prefit: bool, pipeline_repo_path: str):
                     --results "{output_path}/cv_results" \
                     --hyperparams "{output_path}/cv_results/optimized_hyperparameters.json" \
                     --output "{output_path}/final_model" \
+                    --metric "Kappa" \
                     --ensemble'
             ).check_returncode()
 

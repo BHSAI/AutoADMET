@@ -16,6 +16,7 @@ import time
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import argparse
+from sklearn.model_selection import RepeatedStratifiedKFold
 
 DATASETS = [
     "ames",
@@ -28,7 +29,7 @@ FEATURIZATIONS = [
     "morgan_fp",
     "mordred_desc",
 ]
-TIME_LIMIT = 15  # in minutes
+TIME_LIMIT = 75  # in minutes
 SEED = 7654321
 
 
@@ -110,6 +111,7 @@ def get_fitted_automl(
             new predictor, try loading it from pkl_file.
     """
 
+    cv_split = RepeatedStratifiedKFold(n_splits=5, n_repeats=5, random_state=SEED)
     settings = {
         "time_budget": TIME_LIMIT * 60,  # total running time in seconds
         "task": "classification",  # task type
@@ -119,6 +121,7 @@ def get_fitted_automl(
         "metric": cohen_kappa,
         "eval_method": "cv",
         "log_type": "all",
+        "split_type": cv_split,
     }
 
     automl = AutoML()

@@ -128,6 +128,8 @@ def get_fitted_predictor(
             dynamic_stacking=False,
             num_stack_levels=0,  # Limit to prevent overfitting
             num_bag_folds=5,
+            num_bag_sets=5,
+            excluded_model_types=["NN_TORCH"],
         )
     else:
         predictor = TabularPredictor.load(predictor_file)
