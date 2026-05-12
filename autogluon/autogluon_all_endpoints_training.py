@@ -40,6 +40,16 @@ def load_data(
     dataset: str,
     featurization: str,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Load in the preprocessed compound data for the specified dataset and featurization.
+
+    Args:
+        dataset (str): The key for the compound dataset.
+        featurization (str): The key for the featurization.
+
+    Returns:
+        train, test (tuple[pd.DataFrame, pd.DataFrame]): The training and testing data as dataframes.
+    """
     train_csv = f"data/preprocessed/{dataset}/{featurization}.train.csv"
     test_csv = f"data/preprocessed/{dataset}/{featurization}.test.csv"
     train = pd.read_csv(train_csv)
@@ -58,6 +68,18 @@ def get_fitted_predictor(
     predictor_file: str,
     use_prefit: bool,
 ) -> TabularPredictor:
+    """
+    Train and save or load an AutoGluon predictor.
+
+    Args:
+        train (pd.DataFrame): The training data. Ignored if use_prefit is set to true.
+        featurization (str): The featurization used. Used to decide what models to
+            train. Ignored if use_prefit is set to true.
+        predictor_file (str): The file to save the trained predictor to or load it from.
+        use_prefit (bool): If false, do the training as normal. If true, do not train a
+            new predictor, try loading it from predictor_file.
+    """
+
     custom_hyperparameters = get_hyperparameter_config("default")
     extra_models = {
         "KNN": {
@@ -119,6 +141,21 @@ def conf_interval_dict(
     metric: Callable,
     **kwargs,
 ) -> dict:
+    """
+    Get the value of the provided metric function as a 95% confidence interval.
+
+    Args:
+        y_test (np.ndarray): The true test values.
+        y_pred (np.ndarray): The predicted test values.
+        key (str): The str key for the metric for representation in the output dict.
+        metric (Callable): The metric function.
+
+    Returns:
+        A dict with keys: "{key}", "{key}-lb", and "{key}-ub" and values for the metric
+            and the lower and upper bounds for the confidence interval for the metric,
+            respectively.
+
+    """
     ci = bootstrap.bootstrap_ci(
         y_true=y_test.tolist(),
         y_pred=y_pred.tolist(),
@@ -137,6 +174,17 @@ def save_leaderboards(
     leaderboard_file: str,
     top_ensemble_leaderboard_file: str,
 ):
+    """
+    Save leaderboards for the test performance of the trained models.
+
+    Args:
+        predictor (TabularPredictor): The trained AutoGluon predictor.
+        test (pd.DataFrame): The test data to evaluate the models on.
+        leaderboard_file (str): The file to save the full leaderboard including all
+            trained models to.
+        top_ensemble_leaderboard_file (str): The file to save a culled leaderboard only
+            showing the top model and its ancestors (if the top model is an ensemble).
+    """
     leaderboard = predictor.leaderboard(
         extra_metrics=EXTRA_METRICS,
         data=test,
@@ -172,6 +220,15 @@ def save_top_model_metrics(
     test: pd.DataFrame,
     top_performing_metrics_file: str,
 ):
+    """
+    Save the metrics we are interested in to a CSV file for the top performing model.
+    All test metrics are reported as confidence intervals.
+
+    Args:
+        predictor (TabularPredictor): The model to evaluate.
+        test (pd.DataFrame): The test data to evaluate the predictor on.
+        top_performing_metrics_file (str): The path for the file to save the metrics to.
+    """
     y_test = test[CLASS_COL].to_numpy()
     start = time.perf_counter()
     y_pred: np.ndarray = predictor.predict(test)  # type: ignore

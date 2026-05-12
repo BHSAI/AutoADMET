@@ -53,6 +53,17 @@ def load_data(
     dataset: str,
     featurization: str,
 ) -> tuple[pd.DataFrame, np.ndarray, pd.DataFrame, np.ndarray]:
+    """
+    Load in the preprocessed compound data for the specified dataset and featurization.
+
+    Args:
+        dataset (str): The key for the compound dataset.
+        featurization (str): The key for the featurization.
+
+    Returns:
+         X_train, y_train, X_test, y_test (tuple[pd.DataFrame, np.ndarray, pd.DataFrame, np.ndarray]):
+            The training and testing data as dataframes separated into features and classes.
+    """
     train_csv = f"data/preprocessed/{dataset}/{featurization}.train.csv"
     test_csv = f"data/preprocessed/{dataset}/{featurization}.test.csv"
     train = pd.read_csv(train_csv)
@@ -85,6 +96,20 @@ def get_fitted_automl(
     pkl_file: str,
     use_prefit: bool,
 ) -> AutoML:
+    """
+    Train and save or load an the fitted automl object.
+
+    Args:
+        X_train (pd.DataFrame): The features of the training data.
+        y_train (np.ndarray): The classes fo the training data.
+        featurization (str): The featurization used. Used to decide what models to
+            train and how to transform the data. Ignored if use_prefit is set to true.
+        log_file (str): Path to the file to save the FLAML training history to.
+        pkl_file (str): Path to the file to save the fitted automl object to, or recover it from.
+        use_prefit (bool): If false, do the training as normal. If true, do not train a
+            new predictor, try loading it from pkl_file.
+    """
+
     settings = {
         "time_budget": TIME_LIMIT * 60,  # total running time in seconds
         "task": "classification",  # task type
@@ -135,6 +160,21 @@ def conf_interval_dict(
     metric: Callable,
     **kwargs,
 ) -> dict:
+    """
+    Get the value of the provided metric function as a 95% confidence interval.
+
+    Args:
+        y_test (np.ndarray): The true test values.
+        y_pred (np.ndarray): The predicted test values.
+        key (str): The str key for the metric for representation in the output dict.
+        metric (Callable): The metric function.
+
+    Returns:
+        A dict with keys: "{key}", "{key}-lb", and "{key}-ub" and values for the metric
+            and the lower and upper bounds for the confidence interval for the metric,
+            respectively.
+
+    """
     ci = bootstrap.bootstrap_ci(
         y_true=y_test.tolist(),
         y_pred=y_pred.tolist(),
@@ -153,6 +193,16 @@ def save_top_model_metrics(
     y_test: np.ndarray,
     top_performing_metrics_file: str,
 ):
+    """
+    Save the metrics we are interested in to a CSV file for the top performing model.
+    All test metrics are reported as confidence intervals.
+
+    Args:
+        automl (AutoML): The fitted AutoML object to evaluate.
+        X_test (pd.DataFrame): The features of the test data to evaluate the predictor on.
+        y_test (np.ndarray): The true values of the test data to evaluate the predictor on.
+        top_performing_metrics_file (str): The path for the file to save the metrics to.
+    """
     start = time.perf_counter()
     y_pred: np.ndarray = automl.predict(X_test)  # type: ignore
     pred_time = time.perf_counter() - start
@@ -173,12 +223,20 @@ def save_top_model_metrics(
 
 
 def save_fit_history_plot(log_file: str, plot_file: str):
+    """
+    Save a performance-by-time plot visualizing the fit history as captured in the log file.
+
+    Args:
+        log_file (str): The path to the log file to parse fit history from.
+        plot_file (str): The path to save the constructed plot to.
+
+    """
     (
         time_history,
         best_valid_loss_history,
         valid_loss_history,
         config_history,
-        metric_history,
+        _,
     ) = data.get_output_from_log(filename=log_file, time_budget=TIME_LIMIT * 60)
     estimator_list = [
         "lgbm",
