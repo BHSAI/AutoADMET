@@ -6,6 +6,7 @@ DATASETS = [
     "dili",
     "hlm",
     "mmp",
+    "pgp_inhibitors",
 ]
 
 

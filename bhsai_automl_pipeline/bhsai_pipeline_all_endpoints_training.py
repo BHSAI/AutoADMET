@@ -12,10 +12,16 @@ PIPELINE_REPO_PATH = "../bcrp_classify"
 
 DATASETS = [
     "ames",
+    "cyp1a2",
+    "cyp2c9",
+    "cyp2c19",
+    "cyp2d6",
+    "cyp3a4",
     "cytotox",
     "dili",
     "hlm",
     "mmp",
+    "pgp_inhibitors",
 ]
 CLASS_COL = "CLASS"
 
