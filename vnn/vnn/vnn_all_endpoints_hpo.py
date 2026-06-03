@@ -15,6 +15,7 @@ import argparse
 
 DATASETS = [
     "ames",
+    "bbb",
     "cyp1a2",
     "cyp2c9",
     "cyp2c19",
@@ -22,9 +23,11 @@ DATASETS = [
     "cyp3a4",
     "cytotox",
     "dili",
+    "herg",
     "hlm",
     "mmp",
     "pgp_inhibitors",
+    "pgp_substrates",
 ]
 FEATURIZATIONS = ["morgan_fp"]
 
