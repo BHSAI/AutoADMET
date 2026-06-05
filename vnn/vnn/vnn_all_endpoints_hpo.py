@@ -74,6 +74,7 @@ def conf_interval_dict(
 
 def save_top_model_metrics(
     grid_search_results: pd.DataFrame,
+    search_time: float,
     X_train: pd.DataFrame,
     y_train: np.ndarray,
     X_test: pd.DataFrame,
@@ -99,6 +100,7 @@ def save_top_model_metrics(
             y_test, y_pred, "specificity", metrics.recall_score, pos_label=0
         ),
         "kappa_val": grid_search_results.iloc[0]["kappa"],
+        "search_time": search_time,
         "pred_time": pred_time,
     }
     pd.DataFrame([performance]).to_csv(top_performing_metrics_file, index=False)
@@ -118,25 +120,36 @@ def main(use_prefit: bool):
 
         # Get filenames
         config_id_str = f"{dataset}.{featurization}"
-        leaderboard_file = f"vnn/leaderboards/leaderboard.{config_id_str}.csv"
-        plot_file = f"vnn/plots/plot.{config_id_str}.png"
-        top_performing_metrics_file = f"vnn/top_models/top_model.{config_id_str}.csv"
+        leaderboard_file = f"output/vnn/leaderboards/leaderboard.{config_id_str}.csv"
+        per_fold_leaderboard_file = f"output/vnn/leaderboards/leaderboard.per_fold.{config_id_str}.csv"
+        search_time_file = f"output/vnn/leaderboards/search_time.{config_id_str}.txt"
+        plot_file = f"output/vnn/plots/plot.{config_id_str}.png"
+        top_performing_metrics_file = f"top_models/vnn/top_model.{config_id_str}.csv"
         for directory in ["leaderboards", "plots", "top_models"]:
-            Path(f"vnn/{directory}").mkdir(exist_ok=True)
+            Path(f"output/vnn/{directory}").mkdir(exist_ok=True, parents=True)
+        Path(f"top_models/vnn").mkdir(exist_ok=True, parents=True)
 
         # Fit the automl object
         logger.info(f"{dataset} {featurization} - Hyperparameter optimizing vNN")
         if not use_prefit:
-            grid_search_results = vnn_admet.run_grid_search(
+            hpo_start = time.perf_counter()
+            grid_search_results, per_fold_results = vnn_admet.run_grid_search(
                 coo_array(X_train),
                 y_train,
                 smoothing_factor_space_resolution=0.005,
                 tanimoto_threshold_space_resolution=1,
+                n_folds=5,
             )
+            per_fold_results.to_csv(per_fold_leaderboard_file, index=False)
+            search_time = time.perf_counter() - hpo_start
+            with open(search_time_file, 'w') as file:
+                file.write(str(search_time))
         else:
             grid_search_results = pd.read_csv(leaderboard_file).sort_values(
                 "SmoothFactor"
             )
+            with open(search_time_file, 'r') as file:
+                search_time = float(file.read())
 
         # Make training history plot
         logger.info(
@@ -153,6 +166,7 @@ def main(use_prefit: bool):
         grid_search_results.to_csv(leaderboard_file, index=False)
         save_top_model_metrics(
             grid_search_results,
+            search_time,
             X_train,
             y_train,
             X_test,

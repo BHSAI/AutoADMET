@@ -131,7 +131,7 @@ def run_grid_search(
     smoothing_factor_space_resolution: float = 0.1,
     tanimoto_threshold_space_resolution: float = 0.1,
     n_folds=N_FOLDS,
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Perform (smoothing_factor_space_resolution x tanimoto_threshold_space_resolution) grid search on
     smoothing factor and tanimoto distance threshold and report the evaluation metrics.
@@ -173,6 +173,7 @@ def run_grid_search(
 
     search_grid = it.product(smoothing_factor_space, tanimoto_threshold_space)
     results = []
+    per_fold_eval_metrics = []
     for smoothing_factor, tanimoto_threshold in tqdm(
         search_grid,
         "Testing hyperparameters",
@@ -196,4 +197,37 @@ def run_grid_search(
             }
         )
 
-    return pd.DataFrame(results)
+        per_fold_eval_metrics.extend(
+            calc_per_fold_eval_metrics(
+                y=y,
+                y_pred=y_pred,
+                n_folds=n_folds,
+                smoothing_factor=smoothing_factor,
+                tanimoto_threshold=tanimoto_threshold,
+                problem_type=problem_type,
+            )
+        )
+
+    return pd.DataFrame(results), pd.DataFrame(per_fold_eval_metrics)
+
+
+def calc_per_fold_eval_metrics(
+    y: np.ndarray,
+    y_pred: np.ndarray,
+    n_folds: int,
+    smoothing_factor: float,
+    tanimoto_threshold: float,
+    problem_type: PROBLEM_TYPE = CLASSIFICATION,
+) -> list[dict]:
+    per_fold_eval_metrics: list[dict] = []
+    for fold in range(n_folds):
+        y_pred_fold = y_pred[fold::n_folds]
+        y_fold = y[fold::n_folds]
+        per_fold_eval_metrics.append(
+            {
+                "SmoothFactor": smoothing_factor,
+                "TanimotoDistance": tanimoto_threshold,
+                **eval_metrics[problem_type](y_fold, y_pred_fold),
+            }
+        )
+    return per_fold_eval_metrics

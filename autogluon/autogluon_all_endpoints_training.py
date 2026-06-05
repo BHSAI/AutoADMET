@@ -17,6 +17,7 @@ import argparse
 
 DATASETS = [
     "ames",
+    "bbb",
     "cyp1a2",
     "cyp2c9",
     "cyp2c19",
@@ -24,9 +25,11 @@ DATASETS = [
     "cyp3a4",
     "cytotox",
     "dili",
+    "herg",
     "hlm",
     "mmp",
     "pgp_inhibitors",
+    "pgp_substrates",
 ]
 FEATURIZATIONS = [
     "morgan_fp",
@@ -72,8 +75,9 @@ def get_fitted_predictor(
     train: pd.DataFrame,
     featurization: str,
     predictor_file: str,
+    search_time_file: str,
     use_prefit: bool,
-) -> TabularPredictor:
+) -> tuple[TabularPredictor, float]:
     """
     Train and save or load an AutoGluon predictor.
 
@@ -121,6 +125,7 @@ def get_fitted_predictor(
         }
 
     if not use_prefit:
+        search_start = time.perf_counter()
         predictor = TabularPredictor(
             label=CLASS_COL,
             path=predictor_file,
@@ -137,9 +142,15 @@ def get_fitted_predictor(
             num_bag_sets=5,
             excluded_model_types=["NN_TORCH"],
         )
+        search_time = time.perf_counter() - search_start
+        with open(search_time_file, "w") as file:
+            file.write(str(search_time))
     else:
         predictor = TabularPredictor.load(predictor_file)
-    return predictor
+        with open(search_time_file, "r") as file:
+            search_time = float(file.read())
+
+    return predictor, search_time
 
 
 def conf_interval_dict(
@@ -225,6 +236,7 @@ def save_leaderboards(
 
 def save_top_model_metrics(
     predictor: TabularPredictor,
+    search_time: float,
     test: pd.DataFrame,
     top_performing_metrics_file: str,
 ):
@@ -252,6 +264,7 @@ def save_top_model_metrics(
             y_test, y_pred, "specificity", metrics.recall_score, pos_label=0
         ),
         "kappa_val": predictor.leaderboard()["score_val"][0],
+        "search_time": search_time,
         "pred_time": pred_time,
     }
     pd.DataFrame([performance]).to_csv(top_performing_metrics_file, index=False)
@@ -273,20 +286,26 @@ def main(use_prefit: bool):
             f"{TIME_LIMIT}min" if TIME_LIMIT is not None else "no_time_limit"
         )
         config_id_str = f"{dataset}.{featurization}.{EVAL_METRIC}.{time_limit_str}"
-        leaderboard_file = f"autogluon/leaderboards/leaderboard.{config_id_str}.csv"
+        leaderboard_file = f"output/autogluon/leaderboards/leaderboard.{config_id_str}.csv"
+        search_time_file = f"output/autogluon/leaderboards/search_time.{config_id_str}.txt"
         top_ensemble_leaderboard_file = (
-            f"autogluon/leaderboards/leaderboard.{config_id_str}.top_ensemble.csv"
+            f"output/autogluon/leaderboards/leaderboard.{config_id_str}.top_ensemble.csv"
         )
-        predictor_file = f"autogluon/models/model.{config_id_str}"
+        predictor_file = f"output/autogluon/models/model.{config_id_str}"
         top_performing_metrics_file = (
-            f"autogluon/top_models/top_model.{config_id_str}.csv"
+            f"top_models/autogluon/top_model.{config_id_str}.csv"
         )
-        for directory in ["leaderboards", "models", "top_models"]:
-            Path(f"autogluon/{directory}").mkdir(exist_ok=True)
+        for directory in ["leaderboards", "models"]:
+            Path(f"output/autogluon/{directory}").mkdir(exist_ok=True, parents=True)
+        Path(f"top_models/autogluon").mkdir(exist_ok=True, parents=True)
 
         logger.info(f"{dataset} {featurization} - Fitting AutoGluon predictor")
-        predictor = get_fitted_predictor(
-            train, featurization, predictor_file, use_prefit
+        predictor, search_time = get_fitted_predictor(
+            train,
+            featurization,
+            predictor_file,
+            search_time_file,
+            use_prefit,
         )
 
         logger.info(f"{dataset} {featurization} - Saving leaderboards")
@@ -303,6 +322,7 @@ def main(use_prefit: bool):
         )
         save_top_model_metrics(
             predictor,
+            search_time,
             test,
             top_performing_metrics_file,
         )

@@ -7,6 +7,7 @@ import pandas as pd
 from pathlib import Path
 from confidenceinterval import bootstrap
 import argparse
+import time
 
 PIPELINE_REPO_PATH = "../bcrp_classify"
 
@@ -130,6 +131,12 @@ def save_top_model_metrics(
         ]
     )
 
+    with open(f"{cv_output_dir}/train_time.txt", "r") as file:
+        train_time = float(file.read())
+
+    with open(f"{final_model_output_dir}/ensemble_train_time.txt", "r") as file:
+        ensemble_train_time = float(file.read())
+
     performance = [
         {
             "details": details_best,
@@ -138,6 +145,7 @@ def save_top_model_metrics(
                 pred_df_best["Predicted_Label"].to_numpy(),
             ),
             "kappa_val": kappa_val_best,
+            "search_time": train_time,
             "pred_time": pred_time_best,
         },
         {
@@ -147,6 +155,7 @@ def save_top_model_metrics(
                 pred_df_ensemble["Predicted_Label"].to_numpy(),
             ),
             "kappa_val": kappa_val_ensemble,
+            "search_time": train_time + ensemble_train_time,
             "pred_time": pred_time_ensemble,
         },
     ]
@@ -163,36 +172,35 @@ def main(use_prefit: bool, pipeline_repo_path: str):
         # Get filenames
         train_data_path = f"data/preprocessed/{dataset}/mordred_desc.train.csv"
         test_data_path = f"data/preprocessed/{dataset}/mordred_desc.test.csv"
-        output_path = f"bhsai_automl_pipeline/output/{dataset}"
+        output_path = f"output/bhsai_automl_pipeline/{dataset}"
         top_performing_metrics_file = (
-            f"bhsai_automl_pipeline/top_models/top_model.{dataset}.csv"
+            f"top_models/bhsai_automl_pipeline/top_model.{dataset}.csv"
         )
-        for directory in [
-            "output",
-            "top_models",
-        ]:
-            Path(f"bhsai_automl_pipeline/{directory}").mkdir(exist_ok=True)
+        Path("output/bhsai_automl_pipeline").mkdir(exist_ok=True, parents=True)
+        Path("top_models/bhsai_automl_pipeline").mkdir(exist_ok=True, parents=True)
 
         if not use_prefit:
             logger.info(f"{dataset} - Fitting model")
             import subprocess
 
             subprocess.run(
-                f'{pipeline_repo_path}/.venv/Scripts/python.exe {pipeline_repo_path}/pipeline.py \
+                f'{pipeline_repo_path}/.venv/bin/python {pipeline_repo_path}/pipeline.py \
                     --input "{train_data_path}" \
-                    --output "{output_path}/cv_results"'
+                    --output "{output_path}/cv_results"',
+                shell=True,
             ).check_returncode()
 
             logger.info(f"{dataset} - Saving leaderboards")
             subprocess.run(
-                f'{pipeline_repo_path}/.venv/Scripts/python.exe {pipeline_repo_path}/train_test_best_model.py \
+                f'{pipeline_repo_path}/.venv/bin/python {pipeline_repo_path}/train_test_best_model.py \
                     --train "{train_data_path}" \
                     --test "{test_data_path}" \
                     --results "{output_path}/cv_results" \
                     --hyperparams "{output_path}/cv_results/optimized_hyperparameters.json" \
                     --output "{output_path}/final_model" \
                     --metric "Kappa" \
-                    --ensemble'
+                    --ensemble',
+                shell=True,
             ).check_returncode()
 
         # Get performance metrics for the top model

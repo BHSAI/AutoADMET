@@ -104,8 +104,9 @@ def get_fitted_automl(
     featurization: str,
     log_file: str,
     pkl_file: str,
+    search_time_file: str,
     use_prefit: bool,
-) -> AutoML:
+) -> tuple[AutoML, float]:
     """
     Train and save or load an the fitted automl object.
 
@@ -150,19 +151,25 @@ def get_fitted_automl(
         automl.add_learner("vnn", vnn_estimator_flaml.VNNEstimator)
 
     if not use_prefit:
+        search_start = time.perf_counter()
         automl.fit(
             X_train=X_train,
             y_train=y_train,
             **settings,
         )
+        search_time = time.perf_counter() - search_start
         Path("flaml/models").mkdir(exist_ok=True)
         with open(pkl_file, "wb") as f:
             pickle.dump(automl, f, pickle.HIGHEST_PROTOCOL)
+        with open(search_time_file, "w") as file:
+            file.write(str(search_time))
     else:
         with open(pkl_file, "rb") as f:
             automl = pickle.load(f)
+        with open(search_time_file, "r") as file:
+            search_time = float(file.read())
 
-    return automl
+    return automl, search_time
 
 
 def conf_interval_dict(
@@ -201,6 +208,7 @@ def conf_interval_dict(
 
 def save_top_model_metrics(
     automl: AutoML,
+    search_time: float,
     X_test: pd.DataFrame,
     y_test: np.ndarray,
     top_performing_metrics_file: str,
@@ -229,6 +237,7 @@ def save_top_model_metrics(
             y_test, y_pred, "specificity", metrics.recall_score, pos_label=0
         ),
         "kappa_val": 1 - automl.best_loss,
+        "search_time": search_time,
         "pred_time": pred_time,
     }
     pd.DataFrame([performance]).to_csv(top_performing_metrics_file, index=False)
@@ -312,24 +321,38 @@ def main(use_prefit: bool):
 
         # Get filenames
         config_id_str = f"{dataset}.{featurization}.{TIME_LIMIT}min"
-        log_file = f"flaml/logs/{config_id_str}.log"
-        pkl_file = f"flaml/models/model.{config_id_str}.pkl"
-        top_performing_metrics_file = f"flaml/top_models/top_model.{config_id_str}.csv"
-        plot_file = f"flaml/plots/plot.{config_id_str}.png"
-        for directory in ["logs", "models", "top_models", "plots"]:
-            Path(f"flaml/{directory}").mkdir(exist_ok=True)
+        log_file = f"output/flaml/logs/{config_id_str}.log"
+        search_time_file = f"output/flaml/logs/search_time.{config_id_str}.txt"
+        pkl_file = f"output/flaml/models/model.{config_id_str}.pkl"
+        top_performing_metrics_file = f"top_models/flaml/top_model.{config_id_str}.csv"
+        plot_file = f"output/flaml/plots/plot.{config_id_str}.png"
+        for directory in ["logs", "models", "plots"]:
+            Path(f"output/flaml/{directory}").mkdir(exist_ok=True, parents=True)
+        Path(f"top_models/flaml").mkdir(exist_ok=True, parents=True)
 
         # Fit the automl object
         logger.info(f"{dataset} {featurization} - Fitting the FLAML automl object")
-        automl = get_fitted_automl(
-            X_train, y_train, featurization, log_file, pkl_file, use_prefit
+        automl, search_time = get_fitted_automl(
+            X_train,
+            y_train,
+            featurization,
+            log_file,
+            pkl_file,
+            search_time_file,
+            use_prefit,
         )
 
         # Get performance metrics for the top model
         logger.info(
             f"{dataset} {featurization} - Saving performance metrics for the top model"
         )
-        save_top_model_metrics(automl, X_test, y_test, top_performing_metrics_file)
+        save_top_model_metrics(
+            automl,
+            search_time,
+            X_test,
+            y_test,
+            top_performing_metrics_file,
+        )
 
         # Make training history plot
         logger.info(
