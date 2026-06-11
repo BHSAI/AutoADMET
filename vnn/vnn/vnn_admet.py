@@ -8,6 +8,7 @@ import pandas as pd
 import itertools as it
 import sklearn.metrics
 from tqdm import tqdm
+import math
 
 N_FOLDS = 10
 
@@ -20,7 +21,8 @@ SMILES_COL: Final = "smiles"
 PROPERTY_COL: Final = "property"
 
 
-def eval_classification_dict(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
+def eval_classification_dict(y_true: np.ndarray, y_proba: np.ndarray) -> dict:
+    y_pred = y_proba.round()
     total_original = len(y_true)
 
     out_of_domain = np.isnan(y_pred)
@@ -37,6 +39,7 @@ def eval_classification_dict(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
 
     sensitivity = tp / total_pos if total_pos else np.nan
     specificity = tn / total_neg if total_neg else np.nan
+    precision = tp / (tp + fp) if (tp + fp) else np.nan
     accuracy = (tp + tn) / total_within_domain if total_within_domain else np.nan
     if total_within_domain:
         e = ((tp + fn) * (tp + fp) + (fp + tn) * (fn + tn)) / (
@@ -49,6 +52,13 @@ def eval_classification_dict(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
     fpr = fp / total_neg if total_neg else np.nan
     roc = 0.5 * (1 - fpr + tpr) if total_pos and total_neg else np.nan
 
+    pr_curve = sklearn.metrics.precision_recall_curve(y_true, y_proba)
+    pr_auc = sklearn.metrics.auc(pr_curve[1], pr_curve[0])
+    g_mean = math.sqrt(sensitivity * specificity)
+    f1 = sklearn.metrics.f1_score(y_true, y_pred)
+    mcc = sklearn.metrics.matthews_corrcoef(y_true, y_pred)
+
+
     return {
         "Sensitivity": sensitivity,
         "Specificity": specificity,
@@ -56,6 +66,11 @@ def eval_classification_dict(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
         "kappa": kappa,
         "Coverage": coverage,
         "AreaUnderTheCurve": roc,
+        "PR_AUC": pr_auc,
+        "GMean": g_mean,
+        "Precision": precision,
+        "F1": f1,
+        "MCC": mcc,
     }
 
 
@@ -186,8 +201,6 @@ def run_grid_search(
             smoothing_factor=smoothing_factor,
             n_folds=n_folds,
         )
-        if problem_type == CLASSIFICATION:
-            y_pred = y_pred.round()
 
         results.append(
             {

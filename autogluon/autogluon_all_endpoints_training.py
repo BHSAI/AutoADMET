@@ -75,7 +75,7 @@ def get_fitted_predictor(
     train: pd.DataFrame,
     featurization: str,
     predictor_file: str,
-    search_time_file: str,
+    train_time_file: str,
     use_prefit: bool,
 ) -> tuple[TabularPredictor, float]:
     """
@@ -142,15 +142,15 @@ def get_fitted_predictor(
             num_bag_sets=5,
             excluded_model_types=["NN_TORCH"],
         )
-        search_time = time.perf_counter() - search_start
-        with open(search_time_file, "w") as file:
-            file.write(str(search_time))
+        train_time = time.perf_counter() - search_start
+        with open(train_time_file, "w") as file:
+            file.write(str(train_time))
     else:
         predictor = TabularPredictor.load(predictor_file)
-        with open(search_time_file, "r") as file:
-            search_time = float(file.read())
+        with open(train_time_file, "r") as file:
+            train_time = float(file.read())
 
-    return predictor, search_time
+    return predictor, train_time
 
 
 def conf_interval_dict(
@@ -236,7 +236,7 @@ def save_leaderboards(
 
 def save_top_model_metrics(
     predictor: TabularPredictor,
-    search_time: float,
+    train_time: float,
     test: pd.DataFrame,
     top_performing_metrics_file: str,
 ):
@@ -264,7 +264,7 @@ def save_top_model_metrics(
             y_test, y_pred, "specificity", metrics.recall_score, pos_label=0
         ),
         "kappa_val": predictor.leaderboard()["score_val"][0],
-        "search_time": search_time,
+        "train_time": train_time,
         "pred_time": pred_time,
     }
     pd.DataFrame([performance]).to_csv(top_performing_metrics_file, index=False)
@@ -287,7 +287,7 @@ def main(use_prefit: bool):
         )
         config_id_str = f"{dataset}.{featurization}.{EVAL_METRIC}.{time_limit_str}"
         leaderboard_file = f"output/autogluon/leaderboards/leaderboard.{config_id_str}.csv"
-        search_time_file = f"output/autogluon/leaderboards/search_time.{config_id_str}.txt"
+        train_time_file = f"output/autogluon/leaderboards/train_time.{config_id_str}.txt"
         top_ensemble_leaderboard_file = (
             f"output/autogluon/leaderboards/leaderboard.{config_id_str}.top_ensemble.csv"
         )
@@ -300,11 +300,11 @@ def main(use_prefit: bool):
         Path(f"top_models/autogluon").mkdir(exist_ok=True, parents=True)
 
         logger.info(f"{dataset} {featurization} - Fitting AutoGluon predictor")
-        predictor, search_time = get_fitted_predictor(
+        predictor, train_time = get_fitted_predictor(
             train,
             featurization,
             predictor_file,
-            search_time_file,
+            train_time_file,
             use_prefit,
         )
 
@@ -322,7 +322,7 @@ def main(use_prefit: bool):
         )
         save_top_model_metrics(
             predictor,
-            search_time,
+            train_time,
             test,
             top_performing_metrics_file,
         )
