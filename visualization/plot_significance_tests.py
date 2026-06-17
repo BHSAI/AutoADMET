@@ -16,7 +16,7 @@ def main():
         )
 
         top_vnn_cross_val_stats = pd.read_csv(
-            f"output/vnn/leaderboards/leaderboard.per_fold.{dataset}.morgan_fp.csv"
+            f"output/vnn/leaderboards/leaderboard-per_forld.{dataset}.morgan_fp.csv"
         )
         top_vnn_cross_val_stats = top_vnn_cross_val_stats[
             top_vnn_cross_val_stats["SmoothFactor"]
