@@ -13,8 +13,8 @@ import adjustText
 datasets = pd.read_csv(Path(__file__).parent / "dataset_config.csv")
 datasets = datasets.sort_values("FULL_SIZE").reset_index(drop=True)
 
-SPREAD = 0.5
-TICK_WIDTH = 0.05
+SPREAD = 0.33
+TICK_WIDTH = 0.08
 METRICS = ["kappa", "accuracy", "recall", "specificity"]
 
 FEATURIZATIONS = ["morgan_fp", "mordred_desc"]
@@ -129,11 +129,11 @@ def main():
     
     #  Plot test performance
     for metric in METRICS:
-        fig = plt.figure(figsize=(25, 10))
+        fig = plt.figure(figsize=(12, 6))
         ax = fig.add_subplot()
         ax.set_ylim(bottom=0, top=1)
-        ax.xaxis.set_ticks(datasets.index.to_numpy(), datasets["DISPLAY_NAME"])
-        ax.set_title(metric.capitalize())
+        ax.xaxis.set_ticks(datasets.index.to_numpy(), datasets["DISPLAY_NAME"], rotation=45, ha='right')
+        ax.set_title(f"Test {metric.capitalize()} 95% Confidence Interval")
         ax.set_xlabel("Dataset")
         for _, row in combined_performance_df.iterrows():
             dataset, framework, featurization = row[
@@ -149,8 +149,6 @@ def main():
             ax.plot([left, right], [top, top], color=color)
             ax.plot([left, right], [bottom, bottom], color=color)
             ax.plot(x, center, "o", color=color)
-            if metric == "kappa":
-                ax.plot(x, row["kappa_val"], "x", color=color)
 
         handles = [
             (
@@ -159,14 +157,7 @@ def main():
             )
             for (color, _, display_name) in plot_configs.values()
         ]
-        if metric == "kappa":
-            handles.append(
-                (
-                    Line2D([0], [0], color="black", marker="x", linestyle="None"),
-                    "validation kappa",
-                )
-            )
-        ax.legend(*zip(*handles), bbox_to_anchor=(1, 1), loc="upper left")
+        ax.legend(*zip(*handles))
 
         fig.savefig(
             f"visualization/out/confidence_intervals.{metric}.png", bbox_inches="tight"
@@ -179,9 +170,9 @@ def main():
         ("pred_time_small_compounds_normalized", "Inference time on small compounds, per 1000 compounds", "s", 1),
         ("pred_time_large_compounds_normalized", "Inference time on large compounds, per 1000 compounds", "s", 1),
     ]:
-        fig = plt.figure(figsize=(25, 10))
+        fig = plt.figure(figsize=(12, 6))
         ax = fig.add_subplot()
-        ax.xaxis.set_ticks(datasets.index.to_numpy(), datasets["DISPLAY_NAME"])
+        ax.xaxis.set_ticks(datasets.index.to_numpy(), datasets["DISPLAY_NAME"], rotation=45, ha='right')
         ax.set_title(time_display_name)
         ax.set_xlabel("Dataset")
         ax.set_ylabel(f"Normalized time ({unit})")
@@ -189,8 +180,6 @@ def main():
             dataset, framework, featurization = row[
                 ["dataset", "framework", "featurization"]
             ]
-            # num_compounds = datasets[datasets["DATASET"] == dataset]["TEST_SIZE"]
-            # y = row[time_key] * 1000 * multiplier / num_compounds
             y = row[time_key] * 1000 * multiplier
             color, offset, _ = plot_configs[(framework, featurization)]
             x = datasets[datasets["DATASET"] == dataset].index[0] + offset
@@ -204,7 +193,7 @@ def main():
             )
             for (color, _, display_name) in plot_configs.values()
         ]
-        ax.legend(*zip(*handles), bbox_to_anchor=(1, 1), loc="upper left")
+        ax.legend(*zip(*handles))
 
         fig.savefig(f"visualization/out/{time_key}.png", bbox_inches="tight")
 
