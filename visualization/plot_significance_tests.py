@@ -35,11 +35,9 @@ def main():
             "kappa": "Kappa",
         }
         top_vnn_cross_val_stats = top_vnn_cross_val_stats.rename(column_map, axis=1)
-        top_vnn_cross_val_stats = top_vnn_cross_val_stats[list(column_map.values())]
+        top_vnn_cross_val_stats = top_vnn_cross_val_stats[[*column_map.values(), "Repeat", "Fold"]]
         top_vnn_cross_val_stats["Descriptor"] = "Morgan"
         top_vnn_cross_val_stats["Model"] = "vNN"
-        top_vnn_cross_val_stats["Repeat"] = 1
-        top_vnn_cross_val_stats["Fold"] = top_vnn_cross_val_stats.index.to_numpy() + 1
 
         bhsai_cross_val_stats_file = (
             f"output/bhsai_automl_pipeline/{dataset}/cv_results/per_fold_results.csv"

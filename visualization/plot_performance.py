@@ -82,7 +82,9 @@ def make_combined_performance_df() -> pd.DataFrame:
     # Add normalized training time
     combined_performance_df = combined_performance_df.reset_index(drop=True)
     df = combined_performance_df.merge(datasets, left_on="dataset", right_on="DATASET")
-    combined_performance_df["train_time_normalized"] = df["train_time"] / df["TRAIN_SIZE"]
+    combined_performance_df["train_time_normalized"] = (
+        df["train_time"] / df["TRAIN_SIZE"]
+    )
 
     combined_performance_df.to_csv(
         "visualization/out/combined_performance.csv",
@@ -126,13 +128,15 @@ def main():
             fit_configs
         )
     }
-    
+
     #  Plot test performance
     for metric in METRICS:
         fig = plt.figure(figsize=(12, 6))
         ax = fig.add_subplot()
         ax.set_ylim(bottom=0, top=1)
-        ax.xaxis.set_ticks(datasets.index.to_numpy(), datasets["DISPLAY_NAME"], rotation=45, ha='right')
+        ax.xaxis.set_ticks(
+            datasets.index.to_numpy(), datasets["DISPLAY_NAME"], rotation=45, ha="right"
+        )
         ax.set_title(f"Test {metric.capitalize()} 95% Confidence Interval")
         ax.set_xlabel("Dataset")
         for _, row in combined_performance_df.iterrows():
@@ -165,17 +169,41 @@ def main():
 
     #  Plot time test performance
     for time_key, time_display_name, unit, multiplier in [
-        ("train_time_normalized", "Training time, per 1000 compounds", "h", 1/3600),
-        ("pred_time_normalized", "Inference time on test set, per 1000 compounds", "s", 1),
-        ("pred_time_small_compounds_normalized", "Inference time on small compounds, per 1000 compounds", "s", 1),
-        ("pred_time_large_compounds_normalized", "Inference time on large compounds, per 1000 compounds", "s", 1),
+        ("train_time_normalized", "Training time, per 1000 compounds", "h", 1 / 3600),
+        (
+            "pred_time_normalized",
+            "Inference time on test set, per 1000 compounds",
+            "s",
+            1,
+        ),
+        (
+            "pred_time_representative_normalized",
+            "Inference time on combined sample from all datasets, per 1000 compounds",
+            "s",
+            1,
+        ),
+        (
+            "pred_time_small_compounds_normalized",
+            "Inference time on small compounds, per 1000 compounds",
+            "s",
+            1,
+        ),
+        (
+            "pred_time_large_compounds_normalized",
+            "Inference time on large compounds, per 1000 compounds",
+            "s",
+            1,
+        ),
     ]:
         fig = plt.figure(figsize=(12, 6))
         ax = fig.add_subplot()
-        ax.xaxis.set_ticks(datasets.index.to_numpy(), datasets["DISPLAY_NAME"], rotation=45, ha='right')
+        ax.xaxis.set_ticks(
+            datasets.index.to_numpy(), datasets["DISPLAY_NAME"], rotation=45, ha="right"
+        )
         ax.set_title(time_display_name)
         ax.set_xlabel("Dataset")
         ax.set_ylabel(f"Normalized time ({unit})")
+        # ax.set_ylim(bottom=0, top=3.1)
         for _, row in combined_performance_df.iterrows():
             dataset, framework, featurization = row[
                 ["dataset", "framework", "featurization"]
@@ -221,39 +249,61 @@ def main():
         dataset_ranking = ranking[ranking["dataset"] == dataset].reset_index(drop=True)
         for i in range(num_configs):
             ranking_counts[dataset_ranking["config"][i]][i + 1] += 1
-    
+
     # Plot stacked bar chart
     ax = pd.DataFrame(ranking_counts).fillna(0).plot.bar(stacked=True)
     ax.set_xlabel("Rank")
     ax.set_ylabel("Number of Models")
     ax.set_xticklabels(["1st", "2nd", "3rd"])
     ax.legend(bbox_to_anchor=(1, 1), loc="upper left", title="Models")
-    ax.figure.savefig(f"visualization/out/ranking_stacked_bar.png", bbox_inches="tight") # type: ignore
+    ax.figure.savefig(f"visualization/out/ranking_stacked_bar.png", bbox_inches="tight")  # type: ignore
 
     # Make inference time scatter plot
-    df = combined_performance_df[combined_performance_df["framework"] == "vnn"]
-    df = df.merge(datasets[["DATASET","TRAIN_SIZE","TEST_SIZE", "DISPLAY_NAME"]], left_on="dataset", right_on="DATASET")
-    df["PRED_TIME_NORMALIZED"] = 1000 * df["pred_time"] / df["TEST_SIZE"]
-    ax = df.plot.scatter(x="TRAIN_SIZE", y="PRED_TIME_NORMALIZED", label="Dataset")
-    ax.set_xlabel("Number of training compounds")
-    ax.set_ylabel("Inference time per 1000 compounds (s)")
-    ax.set_title("Effect of training set size on vNN inference cost")
-    texts = [
-        ax.text(x, y, dataset, fontsize=8)
-        for _, dataset, x, y in df[
-            ["DISPLAY_NAME", "TRAIN_SIZE", "PRED_TIME_NORMALIZED"]
-        ].itertuples()
-    ]
-    adjustText.adjust_text(
-        texts,
-        expand=(2, 2),
-        arrowprops=dict(arrowstyle="-", lw=1),
-        min_arrow_len=0,
-        force_static=(1, 1),
-        ax=ax,
-        color="gray",
-    )
-    ax.figure.savefig(f"visualization/out/inference_time_scatter_plot.png", bbox_inches="tight") # type: ignore
+    for index, name in [
+        (combined_performance_df["framework"] == "vnn", "vNN"),
+        (
+            (combined_performance_df["framework"] == "bhsai_automl")
+            & (combined_performance_df["featurization"] != "ensemble"),
+            "BHSAI AutoML best predictor",
+        ),
+        (
+            (combined_performance_df["framework"] == "bhsai_automl")
+            & (combined_performance_df["featurization"] == "ensemble"),
+            "BHSAI AutoML ensemble",
+        ),
+    ]:
+        df = combined_performance_df[index].copy()
+        df = df.merge(
+            datasets[["DATASET", "TRAIN_SIZE", "DISPLAY_NAME"]],
+            left_on="dataset",
+            right_on="DATASET",
+        )
+        df["pred_time_representative_normalized"] = (
+            df["pred_time_representative_normalized"] * 1000
+        )
+        ax = df.plot.scatter(
+            x="TRAIN_SIZE", y="pred_time_representative_normalized", label="Dataset"
+        )
+        ax.set_xlabel("Number of training compounds")
+        ax.set_ylabel("Inference time per 1000 compounds (s)")
+        ax.set_title(f"Effect of training set size on {name} inference cost")
+        texts = [
+            ax.text(x, y, dataset, fontsize=8)
+            for _, dataset, x, y in df[
+                ["DISPLAY_NAME", "TRAIN_SIZE", "pred_time_representative_normalized"]
+            ].itertuples()
+        ]
+        adjustText.adjust_text(
+            texts,
+            expand=(2, 2),
+            arrowprops=dict(arrowstyle="-", lw=1),
+            min_arrow_len=0,
+            force_static=(1, 1),
+            ax=ax,
+            color="gray",
+        )
+        ax.figure.savefig(f"visualization/out/inference_time_scatter_plot.{name.lower().replace(" ", "_")}.png", bbox_inches="tight")  # type: ignore
+
 
 if __name__ == "__main__":
     main()

@@ -86,26 +86,23 @@ def test_performance_conf_intervals(
 
 
 def get_pred_times(final_model_dir: str) -> tuple[float, float, float, float]:
-    pred_time_best: float = pd.read_csv(
-        f"{final_model_dir}/best_model_test_metrics.csv", index_col=0
-    ).loc[
-        "Prediction Time", "Value"
-    ]  # type: ignore
-    pred_time_ensemble: float = pd.read_csv(
-        f"{final_model_dir}/ensemble_test_metrics.csv", index_col=0
-    ).loc[
-        "Prediction Time", "Value"
-    ]  # type: ignore
-    num_compounds = pd.read_csv(
-        f"{final_model_dir}/best_model_test_predictions.csv"
-    ).shape[0]
+    pred_time_best, pred_time_best_normalized = (
+        pd.read_csv(f"{final_model_dir}/best_model_test_metrics.csv", index_col=0)
+        .T[["Prediction Time", "Prediction Time Normalized"]]
+        .loc["Value"]
+    )
+    pred_time_ensemble, pred_time_ensemble_normalized = (
+        pd.read_csv(f"{final_model_dir}/ensemble_test_metrics.csv", index_col=0)
+        .T[["Prediction Time", "Prediction Time Normalized"]]
+        .loc["Value"]
+    )
 
     return (
         pred_time_best,
-        pred_time_best / num_compounds,
+        pred_time_best_normalized,
         pred_time_ensemble,
-        pred_time_ensemble / num_compounds,
-    )
+        pred_time_ensemble_normalized,
+    )  # type: ignore
 
 
 def save_top_model_metrics(
@@ -216,41 +213,53 @@ def main(mode: str, pipeline_repo_path: str):
         Path("output/bhsai_automl_pipeline").mkdir(exist_ok=True, parents=True)
         Path("top_models/bhsai_automl_pipeline").mkdir(exist_ok=True, parents=True)
 
-        if mode == "full":
-            logger.info(f"{dataset} - Fitting model")
-            subprocess.run(
-                f'{pipeline_repo_path}/.venv/bin/python {pipeline_repo_path}/pipeline.py \
-                    --input "{train_data_path}" \
-                    --output "{output_path}/cv_results"',
-                shell=True,
-            ).check_returncode()
-
         if mode != "parse-results-only":
-            logger.info(f"{dataset} - Refitting model with all data and evaluating")
-            subprocess.run(
-                f'{pipeline_repo_path}/.venv/bin/python {pipeline_repo_path}/train_test_best_model.py \
-                    --train "{train_data_path}" \
-                    --test "{test_data_path}" \
-                    --results "{output_path}/cv_results" \
-                    --hyperparams "{output_path}/cv_results/optimized_hyperparameters.json" \
-                    --output "{output_path}/final_model" \
-                    --metric "Kappa" \
-                    --ensemble',
-                shell=True,
-            ).check_returncode()
+            if mode == "full":
+                logger.info(f"{dataset} - Fitting model")
+                subprocess.run(
+                    f'{pipeline_repo_path}/.venv/bin/python {pipeline_repo_path}/pipeline.py \
+                        --input "{train_data_path}" \
+                        --output "{output_path}/cv_results"',
+                    shell=True,
+                ).check_returncode()
 
-            time_benchmark_datasets = ["small_compounds", "large_compounds"]
-            for time_benchmark_dataset in time_benchmark_datasets:
-                logger.info(f"{dataset} - Evaluating runtime on {time_benchmark_dataset} dataset")
+            if mode == "load-model":
+                logger.info(f"{dataset} - Loading and evaluating existing model")
+                subprocess.run(
+                    f'{pipeline_repo_path}/.venv/bin/python {pipeline_repo_path}/train_test_best_model.py \
+                        --test "{test_data_path}" \
+                        --load-model "{output_path}/final_model" \
+                        --output "{output_path}/final_model"',
+                    shell=True,
+                ).check_returncode()
+            else:
+                logger.info(f"{dataset} - Refitting model with all data and evaluating")
                 subprocess.run(
                     f'{pipeline_repo_path}/.venv/bin/python {pipeline_repo_path}/train_test_best_model.py \
                         --train "{train_data_path}" \
-                        --test "data/preprocessed/time_benchmark/{time_benchmark_dataset}.mordred_desc.csv" \
+                        --test "{test_data_path}" \
                         --results "{output_path}/cv_results" \
                         --hyperparams "{output_path}/cv_results/optimized_hyperparameters.json" \
-                        --output "{output_path}/final_model-{time_benchmark_dataset}" \
+                        --output "{output_path}/final_model" \
                         --metric "Kappa" \
                         --ensemble',
+                    shell=True,
+                ).check_returncode()
+
+            time_benchmark_datasets = [
+                "small_compounds",
+                "large_compounds",
+                "representative",
+            ]
+            for time_benchmark_dataset in time_benchmark_datasets:
+                logger.info(
+                    f"{dataset} - Evaluating runtime on {time_benchmark_dataset} dataset"
+                )
+                subprocess.run(
+                    f'{pipeline_repo_path}/.venv/bin/python {pipeline_repo_path}/train_test_best_model.py \
+                        --test "data/preprocessed/time_benchmark/{time_benchmark_dataset}.mordred_desc.csv" \
+                        --load-model "{output_path}/final_model" \
+                         --output "{output_path}/final_model-{time_benchmark_dataset}"',
                     shell=True,
                 ).check_returncode()
 
@@ -259,7 +268,11 @@ def main(mode: str, pipeline_repo_path: str):
         save_top_model_metrics(
             output_path=output_path,
             top_performing_metrics_file=top_performing_metrics_file,
-            time_bench_mark_tests=["small_compounds", "large_compounds"],
+            time_bench_mark_tests=[
+                "small_compounds",
+                "large_compounds",
+                "representative",
+            ],
         )
 
 
@@ -267,7 +280,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--mode",
-        choices=["full", "skip-cv", "parse-results-only"],
+        choices=["full", "skip-cv", "load-model", "parse-results-only"],
+        default="full",
         help="Set this flag to skip training when regenerating performance data.",
     )
     parser.add_argument(

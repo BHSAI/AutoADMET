@@ -249,7 +249,9 @@ def vnn_search_provided_space(
                 )
             )
 
-    per_fold_eval_metrics_df = pd.DataFrame(per_fold_eval_metrics)
+    per_fold_eval_metrics_df = pd.DataFrame(per_fold_eval_metrics).sort_values(
+        ["TanimotoDistance", "SmoothFactor", "Repeat", "Fold"]
+    )
     results_df = (
         per_fold_eval_metrics_df.drop(["Fold", "Repeat"], axis=1)
         .groupby(by=["SmoothFactor", "TanimotoDistance"])

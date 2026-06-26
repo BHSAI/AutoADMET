@@ -55,7 +55,7 @@ def load_data(
 
 def load_time_benchmark_data(featurization: str) -> dict[str, pd.DataFrame]:
     time_benchmark_data = {}
-    for dataset in ["large_compounds", "small_compounds"]:
+    for dataset in ["representative", "large_compounds", "small_compounds"]:
         file = f"data/preprocessed/time_benchmark/{dataset}.{featurization}.csv"
         X_test = pd.read_csv(file)
         feature_cols = [col for col in X_test.columns if "FEATURE_" in col]
@@ -107,7 +107,9 @@ def save_top_model_metrics(
     out_of_domain_file: str | None = None,
 ):
     best_model_config = grid_search_results.iloc[0]
-    best_model = VariableNearestNeighborsClassifier(best_model_config["SmoothFactor"], best_model_config["TanimotoDistance"])
+    best_model = VariableNearestNeighborsClassifier(
+        best_model_config["SmoothFactor"], best_model_config["TanimotoDistance"]
+    )
     best_model.fit(X_train, y_train)
 
     y_pred, test_pred_time, test_pred_time_norm = predict_test_set(best_model, X_test)
@@ -173,7 +175,9 @@ def main(use_prefit: bool):
         train_time_file = f"output/vnn/leaderboards/train_time.{config_id_str}.txt"
         plot_file = f"output/vnn/plots/plot.{config_id_str}.png"
         top_performing_metrics_file = f"top_models/vnn/top_model.{config_id_str}.csv"
-        top_performing_metrics_file_app_domain = f"top_models/vnn/top_model-app_domain.{config_id_str}.csv"
+        top_performing_metrics_file_app_domain = (
+            f"top_models/vnn/top_model-app_domain.{config_id_str}.csv"
+        )
         out_of_domain_file = f"data/preprocessed/{dataset}/out_of_domain"
         for directory in ["leaderboards", "plots", "top_models"]:
             Path(f"output/vnn/{directory}").mkdir(exist_ok=True, parents=True)
@@ -193,7 +197,9 @@ def main(use_prefit: bool):
                 n_folds=5,
                 n_repeats=5,
             )
-            grid_search_results = grid_search_results.sort_values("kappa", ascending=False)
+            grid_search_results = grid_search_results.sort_values(
+                "kappa", ascending=False
+            )
             grid_search_results.to_csv(leaderboard_file, index=False)
 
             per_fold_results.to_csv(per_fold_leaderboard_file, index=False)
@@ -201,22 +207,26 @@ def main(use_prefit: bool):
             with open(train_time_file, "w") as file:
                 file.write(str(train_time))
 
-            app_domain_results, per_fold_results_app_domain = vnn_admet.vnn_search_provided_space(
-                coo_array(X_train),
-                y_train,
-                smoothing_factor_space=smoothing_factor_search_space,
-                tanimoto_threshold_space=[distance_threshold],
-                n_folds=5,
-                n_repeats=5,
+            app_domain_results, per_fold_results_app_domain = (
+                vnn_admet.vnn_search_provided_space(
+                    coo_array(X_train),
+                    y_train,
+                    smoothing_factor_space=smoothing_factor_search_space,
+                    tanimoto_threshold_space=[distance_threshold],
+                    n_folds=5,
+                    n_repeats=5,
+                )
             )
-            app_domain_results = app_domain_results.sort_values("kappa", ascending=False)
+            app_domain_results = app_domain_results.sort_values(
+                "kappa", ascending=False
+            )
             app_domain_results.to_csv(leaderboard_file_app_domain, index=False)
             per_fold_results_app_domain.to_csv(
                 per_fold_leaderboard_file_app_domain, index=False
             )
         else:
             grid_search_results = pd.read_csv(leaderboard_file).sort_values(
-                "SmoothFactor"
+                "kappa", ascending=False
             )
             app_domain_results = pd.read_csv(leaderboard_file_app_domain).sort_values(
                 "SmoothFactor"
@@ -228,7 +238,16 @@ def main(use_prefit: bool):
         logger.info(
             f"{dataset} {featurization} - Saving performance to smoothing factor plot"
         )
-        ax = grid_search_results.plot(y="kappa", x="SmoothFactor")
+        ax = grid_search_results.sort_values("SmoothFactor").plot(
+            y="kappa",
+            x="SmoothFactor",
+        )
+        ax.axvline(
+            grid_search_results.sort_values("kappa", ascending=False)["SmoothFactor"][
+                0
+            ],
+            c="red",
+        )
         ax.figure.savefig(plot_file)  # type: ignore
 
         # Get performance metrics for the top model
