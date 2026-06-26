@@ -14,13 +14,23 @@ from scipy.sparse import coo_array
 import argparse
 
 DATASETS = [
-    "ames",
-    "cytotox",
-    "dili",
-    "hlm",
-    "mmp",
+    ("ames", 0.5),
+    ("bbb", 0.6),
+    ("cyp1a2", 0.5),
+    ("cyp2c9", 0.5),
+    ("cyp2c19", 0.5),
+    ("cyp2d6", 0.5),
+    ("cyp3a4", 0.5),
+    ("cytotox", 0.4),
+    ("dili", 0.6),
+    ("herg", 0.7),
+    ("hlm", 0.4),
+    ("mmp", 0.5),
+    ("pgp_inhibitors", 0.5),
+    ("pgp_substrates", 0.6),
 ]
 FEATURIZATIONS = ["morgan_fp"]
+CLASS_COL = "CLASS"
 
 
 def load_data(
@@ -34,14 +44,24 @@ def load_data(
     test = pd.read_csv(test_csv)
     test.columns = test.columns.astype(np.str_)
 
-    class_col = "CLASS"
     feature_cols = [col for col in train.columns if "FEATURE_" in col]
     X_train = train[feature_cols].copy()
-    y_train = train[class_col].to_numpy()
+    y_train = train[CLASS_COL].to_numpy()
     X_test = test[feature_cols].copy()
-    y_test = test[class_col].to_numpy()
+    y_test = test[CLASS_COL].to_numpy()
 
     return X_train, y_train, X_test, y_test
+
+
+def load_time_benchmark_data(featurization: str) -> dict[str, pd.DataFrame]:
+    time_benchmark_data = {}
+    for dataset in ["representative", "large_compounds", "small_compounds"]:
+        file = f"data/preprocessed/time_benchmark/{dataset}.{featurization}.csv"
+        X_test = pd.read_csv(file)
+        feature_cols = [col for col in X_test.columns if "FEATURE_" in col]
+        X_test = X_test[feature_cols]
+        time_benchmark_data[dataset] = X_test
+    return time_benchmark_data
 
 
 def conf_interval_dict(
@@ -63,24 +83,54 @@ def conf_interval_dict(
     }
 
 
+def predict_test_set(
+    model: VariableNearestNeighborsClassifier,
+    X_test: pd.DataFrame,
+) -> tuple[np.ndarray, float, float]:
+    start = time.perf_counter()
+    y_pred: np.ndarray = model.predict(X_test)
+    pred_time = time.perf_counter() - start
+    pred_time_normalized = pred_time / X_test.shape[0]
+
+    return y_pred, pred_time, pred_time_normalized
+
+
 def save_top_model_metrics(
     grid_search_results: pd.DataFrame,
+    train_time: float,
     X_train: pd.DataFrame,
     y_train: np.ndarray,
     X_test: pd.DataFrame,
     y_test: np.ndarray,
     top_performing_metrics_file: str,
+    time_benchmark_test_sets: dict[str, pd.DataFrame],
+    out_of_domain_file: str | None = None,
 ):
     best_model_config = grid_search_results.iloc[0]
-    best_model = VariableNearestNeighborsClassifier(best_model_config["SmoothFactor"])
+    best_model = VariableNearestNeighborsClassifier(
+        best_model_config["SmoothFactor"], best_model_config["TanimotoDistance"]
+    )
     best_model.fit(X_train, y_train)
 
-    start = time.perf_counter()
-    y_pred: np.ndarray = best_model.predict(X_test)
-    pred_time = time.perf_counter() - start
+    y_pred, test_pred_time, test_pred_time_norm = predict_test_set(best_model, X_test)
+
+    out_of_domain = np.isnan(y_pred)
+    if out_of_domain_file is not None:
+        np.save(out_of_domain_file, out_of_domain)
+    num_out_of_domain = out_of_domain.sum()
+    coverage = 1 - num_out_of_domain / len(y_test)
+    y_test = y_test[~out_of_domain]
+    y_pred = y_pred[~out_of_domain]
+
+    extra_time_benchmarks = {
+        f"pred_time_{key}_normalized": predict_test_set(best_model, test_set)[2]
+        for key, test_set in time_benchmark_test_sets.items()
+    }
 
     performance = {
         "smoothing_factor": best_model_config["SmoothFactor"],
+        "distance_threshold": best_model_config["TanimotoDistance"],
+        "coverage": coverage,
         **conf_interval_dict(y_test, y_pred, "kappa", metrics.cohen_kappa_score),
         **conf_interval_dict(y_test, y_pred, "accuracy", metrics.accuracy_score),
         **conf_interval_dict(
@@ -90,7 +140,10 @@ def save_top_model_metrics(
             y_test, y_pred, "specificity", metrics.recall_score, pos_label=0
         ),
         "kappa_val": grid_search_results.iloc[0]["kappa"],
-        "pred_time": pred_time,
+        "train_time": train_time,
+        "pred_time": test_pred_time,
+        "pred_time_normalized": test_pred_time_norm,
+        **extra_time_benchmarks,
     }
     pd.DataFrame([performance]).to_csv(top_performing_metrics_file, index=False)
 
@@ -100,7 +153,9 @@ def main(use_prefit: bool):
     logging.basicConfig(level=logging.INFO)
     logger.info("Starting")
 
-    for dataset, featurization in it.product(DATASETS, FEATURIZATIONS):
+    for (dataset, distance_threshold), featurization in it.product(
+        DATASETS, FEATURIZATIONS
+    ):
         logger.info(f"Working on {dataset} {featurization} data")
 
         # Load data
@@ -109,46 +164,118 @@ def main(use_prefit: bool):
 
         # Get filenames
         config_id_str = f"{dataset}.{featurization}"
-        leaderboard_file = f"vnn/leaderboards/leaderboard.{config_id_str}.csv"
-        plot_file = f"vnn/plots/plot.{config_id_str}.png"
-        top_performing_metrics_file = f"vnn/top_models/top_model.{config_id_str}.csv"
+        leaderboard_file = f"output/vnn/leaderboards/leaderboard.{config_id_str}.csv"
+        per_fold_leaderboard_file = (
+            f"output/vnn/leaderboards/leaderboard-per_forld.{config_id_str}.csv"
+        )
+        leaderboard_file_app_domain = (
+            f"output/vnn/leaderboards/leaderboard-app_domain.{config_id_str}.csv"
+        )
+        per_fold_leaderboard_file_app_domain = f"output/vnn/leaderboards/leaderboard-per_fold-app_domain.{config_id_str}.csv"
+        train_time_file = f"output/vnn/leaderboards/train_time.{config_id_str}.txt"
+        plot_file = f"output/vnn/plots/plot.{config_id_str}.png"
+        top_performing_metrics_file = f"top_models/vnn/top_model.{config_id_str}.csv"
+        top_performing_metrics_file_app_domain = (
+            f"top_models/vnn/top_model-app_domain.{config_id_str}.csv"
+        )
+        out_of_domain_file = f"data/preprocessed/{dataset}/out_of_domain"
         for directory in ["leaderboards", "plots", "top_models"]:
-            Path(f"vnn/{directory}").mkdir(exist_ok=True)
+            Path(f"output/vnn/{directory}").mkdir(exist_ok=True, parents=True)
+        Path(f"top_models/vnn").mkdir(exist_ok=True, parents=True)
 
-        # Fit the automl object
+        # Fit the vnn model
         logger.info(f"{dataset} {featurization} - Hyperparameter optimizing vNN")
         if not use_prefit:
-            grid_search_results = vnn_admet.run_grid_search(
+            smoothing_factor_search_space = vnn_admet.arange_inclusive(0.1, 1, 0.01)
+
+            hpo_start = time.perf_counter()
+            grid_search_results, per_fold_results = vnn_admet.vnn_search_provided_space(
                 coo_array(X_train),
                 y_train,
-                smoothing_factor_space_resolution=0.005,
-                tanimoto_threshold_space_resolution=1,
+                smoothing_factor_space=smoothing_factor_search_space,
+                tanimoto_threshold_space=[1],
+                n_folds=5,
+                n_repeats=5,
+            )
+            grid_search_results = grid_search_results.sort_values(
+                "kappa", ascending=False
+            )
+            grid_search_results.to_csv(leaderboard_file, index=False)
+
+            per_fold_results.to_csv(per_fold_leaderboard_file, index=False)
+            train_time = time.perf_counter() - hpo_start
+            with open(train_time_file, "w") as file:
+                file.write(str(train_time))
+
+            app_domain_results, per_fold_results_app_domain = (
+                vnn_admet.vnn_search_provided_space(
+                    coo_array(X_train),
+                    y_train,
+                    smoothing_factor_space=smoothing_factor_search_space,
+                    tanimoto_threshold_space=[distance_threshold],
+                    n_folds=5,
+                    n_repeats=5,
+                )
+            )
+            app_domain_results = app_domain_results.sort_values(
+                "kappa", ascending=False
+            )
+            app_domain_results.to_csv(leaderboard_file_app_domain, index=False)
+            per_fold_results_app_domain.to_csv(
+                per_fold_leaderboard_file_app_domain, index=False
             )
         else:
             grid_search_results = pd.read_csv(leaderboard_file).sort_values(
+                "kappa", ascending=False
+            )
+            app_domain_results = pd.read_csv(leaderboard_file_app_domain).sort_values(
                 "SmoothFactor"
             )
+            with open(train_time_file, "r") as file:
+                train_time = float(file.read())
 
         # Make training history plot
         logger.info(
-            f"{dataset} {featurization} - Saving performance to time plot for model history"
+            f"{dataset} {featurization} - Saving performance to smoothing factor plot"
         )
-        ax = grid_search_results.plot(y="kappa", x="SmoothFactor")
+        ax = grid_search_results.sort_values("SmoothFactor").plot(
+            y="kappa",
+            x="SmoothFactor",
+        )
+        ax.axvline(
+            grid_search_results.sort_values("kappa", ascending=False)["SmoothFactor"][
+                0
+            ],
+            c="red",
+        )
         ax.figure.savefig(plot_file)  # type: ignore
 
         # Get performance metrics for the top model
-        grid_search_results = grid_search_results.sort_values("kappa", ascending=False)
         logger.info(
             f"{dataset} {featurization} - Saving performance metrics for the top model"
         )
-        grid_search_results.to_csv(leaderboard_file, index=False)
+        time_benchmark_test_sets = load_time_benchmark_data(featurization)
         save_top_model_metrics(
             grid_search_results,
+            train_time,
             X_train,
             y_train,
             X_test,
             y_test,
             top_performing_metrics_file,
+            time_benchmark_test_sets,
+        )
+
+        save_top_model_metrics(
+            app_domain_results,
+            train_time,
+            X_train,
+            y_train,
+            X_test,
+            y_test,
+            top_performing_metrics_file_app_domain,
+            time_benchmark_test_sets,
+            out_of_domain_file=out_of_domain_file,
         )
 
 

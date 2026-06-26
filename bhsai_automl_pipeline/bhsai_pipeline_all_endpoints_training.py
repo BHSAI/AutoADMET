@@ -7,15 +7,25 @@ import pandas as pd
 from pathlib import Path
 from confidenceinterval import bootstrap
 import argparse
+import subprocess
 
 PIPELINE_REPO_PATH = "../bcrp_classify"
 
 DATASETS = [
     "ames",
+    "bbb",
+    "cyp1a2",
+    "cyp2c9",
+    "cyp2c19",
+    "cyp2d6",
+    "cyp3a4",
     "cytotox",
     "dili",
+    "herg",
     "hlm",
     "mmp",
+    "pgp_inhibitors",
+    "pgp_substrates",
 ]
 CLASS_COL = "CLASS"
 
@@ -75,10 +85,30 @@ def test_performance_conf_intervals(
     }
 
 
+def get_pred_times(final_model_dir: str) -> tuple[float, float, float, float]:
+    pred_time_best, pred_time_best_normalized = (
+        pd.read_csv(f"{final_model_dir}/best_model_test_metrics.csv", index_col=0)
+        .T[["Prediction Time", "Prediction Time Normalized"]]
+        .loc["Value"]
+    )
+    pred_time_ensemble, pred_time_ensemble_normalized = (
+        pd.read_csv(f"{final_model_dir}/ensemble_test_metrics.csv", index_col=0)
+        .T[["Prediction Time", "Prediction Time Normalized"]]
+        .loc["Value"]
+    )
+
+    return (
+        pred_time_best,
+        pred_time_best_normalized,
+        pred_time_ensemble,
+        pred_time_ensemble_normalized,
+    )  # type: ignore
+
+
 def save_top_model_metrics(
-    cv_output_dir: str,
-    final_model_output_dir: str,
+    output_path: str,
     top_performing_metrics_file: str,
+    time_bench_mark_tests: list[str],
 ):
     """
     Save the metrics we are interested in to a CSV file for both the top performing single model and the final ensemble.
@@ -89,26 +119,36 @@ def save_top_model_metrics(
         final_model_output_dir (str): The path to the output directory for the final model training step.
         top_performing_metrics_file (str): The path for the file to save the metrics to.
     """
-    pred_df_best = pd.read_csv(
-        f"{final_model_output_dir}/best_model_test_predictions.csv"
-    )
-    pred_df_ensemble = pd.read_csv(
-        f"{final_model_output_dir}/ensemble_test_predictions.csv"
-    )
+    final_model_dir = f"{output_path}/final_model"
+    cv_results_dir = f"{output_path}/cv_results"
 
-    pred_time_best = pd.read_csv(
-        f"{final_model_output_dir}/best_model_test_metrics.csv", index_col=0
-    ).loc["Prediction Time", "Value"]
-    pred_time_ensemble = pd.read_csv(
-        f"{final_model_output_dir}/ensemble_test_metrics.csv", index_col=0
-    ).loc["Prediction Time", "Value"]
+    pred_df_best = pd.read_csv(f"{final_model_dir}/best_model_test_predictions.csv")
+    pred_df_ensemble = pd.read_csv(f"{final_model_dir}/ensemble_test_predictions.csv")
 
+    (
+        pred_time_best,
+        pred_time_best_normalized,
+        pred_time_ensemble,
+        pred_time_ensemble_normalized,
+    ) = get_pred_times(final_model_dir)
+
+    extra_time_benchmarks_best = {}
+    extra_time_benchmarks_ensemble = {}
+    for key in time_bench_mark_tests:
+        (
+            extra_time_benchmarks_best[f"pred_time_{key}"],
+            extra_time_benchmarks_best[f"pred_time_{key}_normalized"],
+            extra_time_benchmarks_ensemble[f"pred_time_{key}"],
+            extra_time_benchmarks_ensemble[f"pred_time_{key}_normalized"],
+        ) = get_pred_times(f"{final_model_dir}-{key}")
+
+    # Get validation metrics
     kappa_val_ensemble = pd.read_csv(
-        f"{final_model_output_dir}/ensemble_oof_metrics.csv", index_col=0
+        f"{final_model_dir}/ensemble_oof_metrics.csv", index_col=0
     ).loc["Kappa", "Value"]
 
     best_models_df = (
-        pd.read_csv(f"{cv_output_dir}/results_summary.csv")
+        pd.read_csv(f"{cv_results_dir}/results_summary.csv")
         .sort_values("Kappa", ascending=False)
         .reset_index(drop=True)
     )
@@ -121,6 +161,12 @@ def save_top_model_metrics(
         ]
     )
 
+    with open(f"{cv_results_dir}/train_time.txt", "r") as file:
+        train_time = float(file.read())
+
+    with open(f"{final_model_dir}/ensemble_train_time.txt", "r") as file:
+        ensemble_train_time = float(file.read())
+
     performance = [
         {
             "details": details_best,
@@ -129,7 +175,10 @@ def save_top_model_metrics(
                 pred_df_best["Predicted_Label"].to_numpy(),
             ),
             "kappa_val": kappa_val_best,
+            "train_time": train_time,
             "pred_time": pred_time_best,
+            "pred_time_normalized": pred_time_best_normalized,
+            **extra_time_benchmarks_best,
         },
         {
             "details": details_ensemble,
@@ -138,13 +187,16 @@ def save_top_model_metrics(
                 pred_df_ensemble["Predicted_Label"].to_numpy(),
             ),
             "kappa_val": kappa_val_ensemble,
+            "train_time": train_time + ensemble_train_time,
             "pred_time": pred_time_ensemble,
+            "pred_time_normalized": pred_time_ensemble_normalized,
+            **extra_time_benchmarks_ensemble,
         },
     ]
     pd.DataFrame(performance).to_csv(top_performing_metrics_file, index=False)
 
 
-def main(use_prefit: bool, pipeline_repo_path: str):
+def main(mode: str, pipeline_repo_path: str):
     logger = logging.getLogger(__name__)
     logging.basicConfig(level=logging.INFO)
     logger.info("Starting")
@@ -154,51 +206,82 @@ def main(use_prefit: bool, pipeline_repo_path: str):
         # Get filenames
         train_data_path = f"data/preprocessed/{dataset}/mordred_desc.train.csv"
         test_data_path = f"data/preprocessed/{dataset}/mordred_desc.test.csv"
-        output_path = f"bhsai_automl_pipeline/output/{dataset}"
+        output_path = f"output/bhsai_automl_pipeline/{dataset}"
         top_performing_metrics_file = (
-            f"bhsai_automl_pipeline/top_models/top_model.{dataset}.csv"
+            f"top_models/bhsai_automl_pipeline/top_model.{dataset}.csv"
         )
-        for directory in [
-            "output",
-            "top_models",
-        ]:
-            Path(f"bhsai_automl_pipeline/{directory}").mkdir(exist_ok=True)
+        Path("output/bhsai_automl_pipeline").mkdir(exist_ok=True, parents=True)
+        Path("top_models/bhsai_automl_pipeline").mkdir(exist_ok=True, parents=True)
 
-        if not use_prefit:
-            logger.info(f"{dataset} - Fitting model")
-            import subprocess
+        if mode != "parse-results-only":
+            if mode == "full":
+                logger.info(f"{dataset} - Fitting model")
+                subprocess.run(
+                    f'{pipeline_repo_path}/.venv/bin/python {pipeline_repo_path}/pipeline.py \
+                        --input "{train_data_path}" \
+                        --output "{output_path}/cv_results"',
+                    shell=True,
+                ).check_returncode()
 
-            subprocess.run(
-                f'{pipeline_repo_path}/.venv/Scripts/python.exe {pipeline_repo_path}/pipeline.py \
-                    --input "{train_data_path}" \
-                    --output "{output_path}/cv_results"'
-            ).check_returncode()
+            if mode == "load-model":
+                logger.info(f"{dataset} - Loading and evaluating existing model")
+                subprocess.run(
+                    f'{pipeline_repo_path}/.venv/bin/python {pipeline_repo_path}/train_test_best_model.py \
+                        --test "{test_data_path}" \
+                        --load-model "{output_path}/final_model" \
+                        --output "{output_path}/final_model"',
+                    shell=True,
+                ).check_returncode()
+            else:
+                logger.info(f"{dataset} - Refitting model with all data and evaluating")
+                subprocess.run(
+                    f'{pipeline_repo_path}/.venv/bin/python {pipeline_repo_path}/train_test_best_model.py \
+                        --train "{train_data_path}" \
+                        --test "{test_data_path}" \
+                        --results "{output_path}/cv_results" \
+                        --hyperparams "{output_path}/cv_results/optimized_hyperparameters.json" \
+                        --output "{output_path}/final_model" \
+                        --metric "Kappa" \
+                        --ensemble',
+                    shell=True,
+                ).check_returncode()
 
-            logger.info(f"{dataset} - Saving leaderboards")
-            subprocess.run(
-                f'{pipeline_repo_path}/.venv/Scripts/python.exe {pipeline_repo_path}/train_test_best_model.py \
-                    --train "{train_data_path}" \
-                    --test "{test_data_path}" \
-                    --results "{output_path}/cv_results" \
-                    --hyperparams "{output_path}/cv_results/optimized_hyperparameters.json" \
-                    --output "{output_path}/final_model" \
-                    --ensemble'
-            ).check_returncode()
+            time_benchmark_datasets = [
+                "small_compounds",
+                "large_compounds",
+                "representative",
+            ]
+            for time_benchmark_dataset in time_benchmark_datasets:
+                logger.info(
+                    f"{dataset} - Evaluating runtime on {time_benchmark_dataset} dataset"
+                )
+                subprocess.run(
+                    f'{pipeline_repo_path}/.venv/bin/python {pipeline_repo_path}/train_test_best_model.py \
+                        --test "data/preprocessed/time_benchmark/{time_benchmark_dataset}.mordred_desc.csv" \
+                        --load-model "{output_path}/final_model" \
+                         --output "{output_path}/final_model-{time_benchmark_dataset}"',
+                    shell=True,
+                ).check_returncode()
 
         # Get performance metrics for the top model
         logger.info(f"{dataset} - Saving performance metrics for the top model")
         save_top_model_metrics(
-            cv_output_dir=f"{output_path}/cv_results",
-            final_model_output_dir=f"{output_path}/final_model",
+            output_path=output_path,
             top_performing_metrics_file=top_performing_metrics_file,
+            time_bench_mark_tests=[
+                "small_compounds",
+                "large_compounds",
+                "representative",
+            ],
         )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--use_prefit",
-        action="store_true",
+        "--mode",
+        choices=["full", "skip-cv", "load-model", "parse-results-only"],
+        default="full",
         help="Set this flag to skip training when regenerating performance data.",
     )
     parser.add_argument(
@@ -208,4 +291,4 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    main(args.use_prefit, args.pipeline_repo_path)
+    main(args.mode, args.pipeline_repo_path)

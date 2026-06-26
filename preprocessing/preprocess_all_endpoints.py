@@ -2,10 +2,19 @@ import preprocess_compounds
 
 DATASETS = [
     "ames",
+    "bbb",
+    "cyp1a2",
+    "cyp2c9",
+    "cyp2c19",
+    "cyp2d6",
+    "cyp3a4",
     "cytotox",
     "dili",
+    "herg",
     "hlm",
     "mmp",
+    "pgp_inhibitors",
+    "pgp_substrates",
 ]
 
 

@@ -9,3 +9,6 @@ plots
 catboost*
 visualization/out
 output
+out-*
+flaml/
+autogluon/

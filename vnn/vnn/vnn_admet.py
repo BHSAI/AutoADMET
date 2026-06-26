@@ -1,4 +1,4 @@
-from typing import Final, Literal
+from typing import Final, Iterable, Literal
 
 import numpy as np
 from scipy.sparse import coo_array
@@ -7,7 +7,9 @@ import vnn.variable_nearest_neighbor as vnn_classifier
 import pandas as pd
 import itertools as it
 import sklearn.metrics
+import sklearn.utils
 from tqdm import tqdm
+import math
 
 N_FOLDS = 10
 
@@ -20,12 +22,14 @@ SMILES_COL: Final = "smiles"
 PROPERTY_COL: Final = "property"
 
 
-def eval_classification_dict(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
+def eval_classification_dict(y_true: np.ndarray, y_proba: np.ndarray) -> dict:
+    y_pred = y_proba.round()
     total_original = len(y_true)
 
     out_of_domain = np.isnan(y_pred)
     y_true = y_true[~out_of_domain]
     y_pred = y_pred[~out_of_domain]
+    y_proba = y_proba[~out_of_domain]
     num_out_of_domain = out_of_domain.sum()
     coverage = 1 - num_out_of_domain / total_original
 
@@ -37,6 +41,7 @@ def eval_classification_dict(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
 
     sensitivity = tp / total_pos if total_pos else np.nan
     specificity = tn / total_neg if total_neg else np.nan
+    precision = tp / (tp + fp) if (tp + fp) else np.nan
     accuracy = (tp + tn) / total_within_domain if total_within_domain else np.nan
     if total_within_domain:
         e = ((tp + fn) * (tp + fp) + (fp + tn) * (fn + tn)) / (
@@ -49,6 +54,12 @@ def eval_classification_dict(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
     fpr = fp / total_neg if total_neg else np.nan
     roc = 0.5 * (1 - fpr + tpr) if total_pos and total_neg else np.nan
 
+    pr_curve = sklearn.metrics.precision_recall_curve(y_true, y_proba)
+    pr_auc = sklearn.metrics.auc(pr_curve[1], pr_curve[0])
+    g_mean = math.sqrt(sensitivity * specificity)
+    f1 = sklearn.metrics.f1_score(y_true, y_pred)
+    mcc = sklearn.metrics.matthews_corrcoef(y_true, y_pred)
+
     return {
         "Sensitivity": sensitivity,
         "Specificity": specificity,
@@ -56,6 +67,11 @@ def eval_classification_dict(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
         "kappa": kappa,
         "Coverage": coverage,
         "AreaUnderTheCurve": roc,
+        "PR_AUC": pr_auc,
+        "GMean": g_mean,
+        "Precision": precision,
+        "F1": f1,
+        "MCC": mcc,
     }
 
 
@@ -124,6 +140,10 @@ def v_neighbors_weighted_avg_oof(
     )
 
 
+def arange_inclusive(start: float, stop: float, step: float) -> np.ndarray:
+    return np.concatenate((np.arange(start=start, stop=stop, step=step), [stop]))
+
+
 def run_grid_search(
     X: coo_array,
     y: np.ndarray,
@@ -131,7 +151,7 @@ def run_grid_search(
     smoothing_factor_space_resolution: float = 0.1,
     tanimoto_threshold_space_resolution: float = 0.1,
     n_folds=N_FOLDS,
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Perform (smoothing_factor_space_resolution x tanimoto_threshold_space_resolution) grid search on
     smoothing factor and tanimoto distance threshold and report the evaluation metrics.
@@ -146,54 +166,122 @@ def run_grid_search(
     Returns:
         A dataframe of the evaluated combinations of hyperparameters and their validation performance metrics.
     """
-    tanimoto_dist = vnn_classifier.tanimoto_distance_matrix(X, X)
-
     # Perform grid search over smoothing factor and distance threshold
     if smoothing_factor_space_resolution <= 0.9:
-        smoothing_factor_space = it.chain(
-            np.arange(start=0.1, stop=1, step=smoothing_factor_space_resolution),
-            [1],
+        smoothing_factor_space = arange_inclusive(
+            start=0.1,
+            stop=1,
+            step=smoothing_factor_space_resolution,
         )
-        smoothing_factor_space_resolution = 0.9 / smoothing_factor_space_resolution + 1
     else:
         smoothing_factor_space = [1]
-        smoothing_factor_space_resolution = 1
 
     if tanimoto_threshold_space_resolution <= 0.9:
-        tanimoto_threshold_space = it.chain(
-            np.arange(start=0.1, stop=1, step=tanimoto_threshold_space_resolution),
-            [1],
-        )
-        tanimoto_threshold_space_resolution = (
-            0.9 / tanimoto_threshold_space_resolution + 1
+        tanimoto_threshold_space = arange_inclusive(
+            start=0.1,
+            stop=1,
+            step=tanimoto_threshold_space_resolution,
         )
     else:
         tanimoto_threshold_space = [1]
-        tanimoto_threshold_space_resolution = 1
 
-    search_grid = it.product(smoothing_factor_space, tanimoto_threshold_space)
-    results = []
-    for smoothing_factor, tanimoto_threshold in tqdm(
-        search_grid,
-        "Testing hyperparameters",
-        int(smoothing_factor_space_resolution * tanimoto_threshold_space_resolution),
-    ):
-        y_pred = v_neighbors_weighted_avg_oof(
-            dist_matrix=tanimoto_dist,
-            y=y,
-            distance_threshold=tanimoto_threshold,
-            smoothing_factor=smoothing_factor,
-            n_folds=n_folds,
-        )
-        if problem_type == CLASSIFICATION:
-            y_pred = y_pred.round()
+    return vnn_search_provided_space(
+        X=X,
+        y=y,
+        smoothing_factor_space=smoothing_factor_space,
+        tanimoto_threshold_space=tanimoto_threshold_space,
+        problem_type=problem_type,
+        n_folds=n_folds,
+    )
 
-        results.append(
+
+def vnn_search_provided_space(
+    X: coo_array,
+    y: np.ndarray,
+    smoothing_factor_space: Iterable[float],
+    tanimoto_threshold_space: Iterable[float],
+    problem_type: PROBLEM_TYPE = CLASSIFICATION,
+    n_folds: int = N_FOLDS,
+    n_repeats: int = 1,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    smoothing_factor_space = list(smoothing_factor_space)
+    tanimoto_threshold_space = list(tanimoto_threshold_space)
+    search_grid = list(it.product(smoothing_factor_space, tanimoto_threshold_space))
+
+    per_fold_eval_metrics = []
+
+    for repeat in range(n_repeats):
+        # Shuffle the data for this repeat, keeping all positive rows at the beginning to ensure each fold has positive samples.
+        pos_labels = y == 1
+        X_pos: np.ndarray
+        X_neg: np.ndarray
+        y_pos: np.ndarray
+        y_neg: np.ndarray
+        X_pos, y_pos = sklearn.utils.shuffle(X.toarray()[pos_labels], y[pos_labels], random_state=repeat)  # type: ignore
+        X_neg, y_neg = sklearn.utils.shuffle(X.toarray()[~pos_labels], y[~pos_labels], random_state=repeat)  # type: ignore
+        X_repeat = coo_array(np.concat([X_pos, X_neg]))
+        y_repeat = np.concat([y_pos, y_neg])
+
+        tanimoto_dist = vnn_classifier.tanimoto_distance_matrix(X_repeat, X_repeat)
+
+        for smoothing_factor, tanimoto_threshold in tqdm(
+            search_grid,
+            f"Testing hyperparameters - repeat {repeat + 1}",
+            int(len(smoothing_factor_space) * len(tanimoto_threshold_space)),
+        ):
+            y_pred = v_neighbors_weighted_avg_oof(
+                dist_matrix=tanimoto_dist,
+                y=y_repeat,
+                distance_threshold=tanimoto_threshold,
+                smoothing_factor=smoothing_factor,
+                n_folds=n_folds,
+            )
+
+            per_fold_eval_metrics.extend(
+                calc_per_fold_eval_metrics(
+                    y=y_repeat,
+                    y_pred=y_pred,
+                    n_folds=n_folds,
+                    smoothing_factor=smoothing_factor,
+                    tanimoto_threshold=tanimoto_threshold,
+                    problem_type=problem_type,
+                    repeat=repeat + 1,
+                )
+            )
+
+    per_fold_eval_metrics_df = pd.DataFrame(per_fold_eval_metrics).sort_values(
+        ["TanimotoDistance", "SmoothFactor", "Repeat", "Fold"]
+    )
+    results_df = (
+        per_fold_eval_metrics_df.drop(["Fold", "Repeat"], axis=1)
+        .groupby(by=["SmoothFactor", "TanimotoDistance"])
+        .mean()
+        .reset_index()
+    )
+
+    return results_df, per_fold_eval_metrics_df
+
+
+def calc_per_fold_eval_metrics(
+    y: np.ndarray,
+    y_pred: np.ndarray,
+    n_folds: int,
+    smoothing_factor: float,
+    tanimoto_threshold: float,
+    problem_type: PROBLEM_TYPE = CLASSIFICATION,
+    repeat: int = 1,
+) -> list[dict]:
+    per_fold_eval_metrics: list[dict] = []
+    for fold in range(n_folds):
+        y_pred_fold = y_pred[fold::n_folds]
+        y_fold = y[fold::n_folds]
+        per_fold_eval_metrics.append(
             {
                 "SmoothFactor": smoothing_factor,
                 "TanimotoDistance": tanimoto_threshold,
-                **eval_metrics[problem_type](y, y_pred),
+                "Fold": fold + 1,
+                "Repeat": repeat,
+                **eval_metrics[problem_type](y_fold, y_pred_fold),
             }
         )
-
-    return pd.DataFrame(results)
+    return per_fold_eval_metrics
