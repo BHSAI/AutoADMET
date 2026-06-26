@@ -1,8 +1,22 @@
 # AutoML
 
-This repository contains code to reproduce exploration and comparison of AutoML frameworks as applied to 5 binary classification ADMET endpoints: Chemical Mutagenicity (AMES), Drug-Induced Liver Injury (DILI), Cytotoxicity (Cytotox), Human Liver Microsomal Stability (HLM), and Mitochondrial Membrane Potential Disruption (MMP).
+This repository contains code to reproduce comparison of BHSAI's AutoML pipeline to the vNN-ADMET algorithm as applied to 14 binary classification ADMET endpoints: 
+- Chemical Mutagenicity (AMES)
+- Blood-Brain Barrier (BBB)
+- Cytochrome P450 Inhibition 1A2 (CYP1A2)
+- Cytochrome P450 Inhibition 2C9 (CYP2C9)
+- Cytochrome P450 Inhibition 2C19 (CYP2C19)
+- Cytochrome P450 Inhibition 2D6 (CYP2D6)
+- Cytochrome P450 Inhibition 3A4 (CYP3A4)
+- Cytotoxicity (Cytotox)
+- Drug-Induced Liver Injury (DILI)
+- Cardiotoxicitiy (hERG)
+- Human Liver Microsomal Stability (HLM)
+- Mitochondrial Membrane Potential Disruption (MMP)
+- Pgp Inhibitors
+- Pgp Substrates
 
-All scripts in this repository are meant to be run in the base directory of the repository, i.e. the directory this readme is in.
+All scripts in this repository are meant to be run from the base directory of the repository, i.e. the directory this readme is in.
 
 # Setup
 
@@ -16,6 +30,15 @@ Replace `[python-3.12]` with the location of your Python 3.12 executable, e.g. `
 
 [python-3.12] -m venv .venv-automl
 .venv-automl\Scripts\pip.exe install -r requirements-automl.txt
+```
+
+#### Linux
+```
+[python-3.12] -m venv .venv-preprocessing
+.venv-preprocessing\bin\pip install -r requirements-preprocessing.txt
+
+[python-3.12] -m venv .venv-automl
+.venv-automl\bin\pip install -r requirements-automl.txt
 ```
 
 # Preprocessing
@@ -32,16 +55,16 @@ To fit predictors using the frameworks run the following:
 
 **Activate the virtual environment:** `.venv-automl\Scripts\Activate.ps1`
 
-**vNN:** `vnn\vnn\vnn_all_endpoints_hpo.py`
+**vNN:** `python vnn\vnn\vnn_all_endpoints_hpo.py`
 
-**AutoGluon:** `autogluon\autogluon_all_endpoints_training.py`
+**BHSAI AutoML Pipeline:** `python bhsai_automl_pipeline/bhsai_pipeline_all_endpoints_training.py`
 
-**FLAML:** `flaml\flaml_all_endpoints_training.py`
-
-All three of the above scripts include an option `--use_prefit` to skip fitting a predictor and use a previously fitted predictor to generate performance metrics--useful if you are changing how the performance metrics are reported.
+Both of the above scripts include options to skip the time-consuming hyperparameter search. For vNN, use `--use_prefit`. For BHSAI AutoML Pipeline, use `--mode` with option `skip-cv` to skip the hyperparameter search, `load-model` to skip the ensembling and refitting the optimal model with full data, or `parse-results-only` to skip model evaluation and regenerate performance plots with previously collected performance data.
 
 # Visualization
 
-Run the following to generate visualizations:
+Run the following to generate validation performance comparisons between vNN and the individual models that the BHSAI AutoML Pipeline trains:
+`python visualization\plot_significance_tests.py`
 
+And the following to generate evaluation performance comparisons between vNN, the best validating model from the BHSAI AutoML Pipeline, and its ensemble model:
 `python visualization\plot_performance.py`
