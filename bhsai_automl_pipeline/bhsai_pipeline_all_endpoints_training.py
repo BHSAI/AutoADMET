@@ -249,7 +249,10 @@ def main(mode: str, pipeline_repo_path: str):
             time_benchmark_datasets = [
                 "small_compounds",
                 "large_compounds",
-                "representative",
+                "representative-2500",
+                "representative-5000",
+                "representative-10000",
+                "representative-20000",
             ]
             for time_benchmark_dataset in time_benchmark_datasets:
                 logger.info(
@@ -271,7 +274,10 @@ def main(mode: str, pipeline_repo_path: str):
             time_bench_mark_tests=[
                 "small_compounds",
                 "large_compounds",
-                "representative",
+                "representative-2500",
+                "representative-5000",
+                "representative-10000",
+                "representative-20000",
             ],
         )
 

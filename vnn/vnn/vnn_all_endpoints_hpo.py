@@ -55,7 +55,14 @@ def load_data(
 
 def load_time_benchmark_data(featurization: str) -> dict[str, pd.DataFrame]:
     time_benchmark_data = {}
-    for dataset in ["representative", "large_compounds", "small_compounds"]:
+    for dataset in [
+        "small_compounds",
+        "large_compounds",
+        "representative-2500",
+        "representative-5000",
+        "representative-10000",
+        "representative-20000",
+    ]:
         file = f"data/preprocessed/time_benchmark/{dataset}.{featurization}.csv"
         X_test = pd.read_csv(file)
         feature_cols = [col for col in X_test.columns if "FEATURE_" in col]
