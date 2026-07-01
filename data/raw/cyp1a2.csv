@@ -1,4 +1,4 @@
-name,SMILES,Property
+Name,SMILES,Property
 CYP1A2_0001,C\C(=C(\C#N)/C(=O)Nc1cc(Br)ccc1Br)\O,1
 CYP1A2_0002,OC1=C(C(=O)C2CC2)C(=O)Nc3cc(Cl)ccc13,1
 CYP1A2_0003,CCOC(=O)C1=C(O)C(=O)N(Cc2ccccc2)C1,1

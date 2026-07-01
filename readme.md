@@ -45,9 +45,9 @@ Replace `[python-3.12]` with the location of your Python 3.12 executable, e.g. `
 
 To preprocess the raw data, run the following:
 ```
-.venv-preprocessing\Scripts\python.exe preprocessing\preprocess_all_5_endpoints.py
+.venv-preprocessing\Scripts\python.exe preprocessing\preprocess_all_endpoints.py
 ```
-This will generate 2048-bit Morgan fingerprints and Mordred descriptors for the compounds in all 5 datasets and separate them into a train-test scaffold split. The preprocessed data will appear under `data/preprocessed`.
+This will generate 2048-bit Morgan fingerprints and Mordred descriptors for the compounds in all datasets and separate them into a train-test scaffold split. The preprocessed data will appear under `data/preprocessed`.
 
 # AutoML
 

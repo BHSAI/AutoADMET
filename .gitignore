@@ -1,6 +1,5 @@
 __pycache__
 .venv*
-preprocessed
 models
 leaderboards
 logs
@@ -12,3 +11,6 @@ output
 out-*
 flaml/
 autogluon/
+/data/preprocessed/*/*mordred_desc*
+/data/preprocessed/*/*morgan_fp*
+/data/preprocessed/*/out_of_domain.npy

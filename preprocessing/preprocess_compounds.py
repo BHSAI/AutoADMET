@@ -94,6 +94,7 @@ def preprocess_compounds(
     # Save featurized data
     Path(output_dir).mkdir(exist_ok=True, parents=True)
     df.to_csv(f"{output_dir}/{featurization}.all.csv", index=False)
+    df[["Name", "CANONICAL_SMILES", "CLASS"]].to_csv(f"{output_dir}/canonical_smiles.all.csv", index=False)
 
     # Perform and save scaffold split
     if training_data:
@@ -111,7 +112,9 @@ def preprocess_compounds(
 
         # Save split dataframes
         train_compounds.to_csv(f"{output_dir}/{featurization}.train.csv", index=False)
+        train_compounds[["Name", "CANONICAL_SMILES", "CLASS"]].to_csv(f"{output_dir}/canonical_smiles.train.csv", index=False)
         test_compounds.to_csv(f"{output_dir}/{featurization}.test.csv", index=False)
+        test_compounds[["Name", "CANONICAL_SMILES", "CLASS"]].to_csv(f"{output_dir}/canonical_smiles.test.csv", index=False)
 
 
 def _parse_arguments() -> argparse.Namespace:

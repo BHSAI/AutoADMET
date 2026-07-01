@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 import math
 
-FEATURIZATIONS = ["morgan_fp", "mordred_desc"]
+FEATURIZATIONS = ["morgan_fp", "mordred_desc", "canonical_smiles"]
 DATASETS = [
     "ames",
     "bbb",
@@ -44,22 +44,28 @@ def main():
 
         Path("data/preprocessed/time_benchmark").mkdir(parents=True, exist_ok=True)
         df.to_csv(
-            f"data/preprocessed/time_benchmark/representative-20000.{featurization}.csv"
+            f"data/preprocessed/time_benchmark/representative-20000.{featurization}.csv",
+            index=False,
         )
         df.sample(10_000, random_state=SEED).to_csv(
-            f"data/preprocessed/time_benchmark/representative-10000.{featurization}.csv"
+            f"data/preprocessed/time_benchmark/representative-10000.{featurization}.csv",
+            index=False,
         )
         df.sample(5_000, random_state=SEED).to_csv(
-            f"data/preprocessed/time_benchmark/representative-5000.{featurization}.csv"
+            f"data/preprocessed/time_benchmark/representative-5000.{featurization}.csv",
+            index=False,
         )
         df.sample(2_500, random_state=SEED).to_csv(
-            f"data/preprocessed/time_benchmark/representative-2500.{featurization}.csv"
+            f"data/preprocessed/time_benchmark/representative-2500.{featurization}.csv",
+            index=False,
         )
         smallest_5_percent.to_csv(
-            f"data/preprocessed/time_benchmark/small_compounds.{featurization}.csv"
+            f"data/preprocessed/time_benchmark/small_compounds.{featurization}.csv",
+            index=False,
         )
         largest_5_percent.to_csv(
-            f"data/preprocessed/time_benchmark/large_compounds.{featurization}.csv"
+            f"data/preprocessed/time_benchmark/large_compounds.{featurization}.csv",
+            index=False,
         )
 
 
