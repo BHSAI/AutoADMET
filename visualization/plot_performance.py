@@ -296,11 +296,11 @@ def main():
             left_on="dataset",
             right_on="DATASET",
         )
-        df["pred_time_representative_normalized"] = (
-            df["pred_time_representative_normalized"] * 1000
+        df["pred_time_representative-20000_normalized"] = (
+            df["pred_time_representative-20000_normalized"] * 1000
         )
         ax = df.plot.scatter(
-            x="TRAIN_SIZE", y="pred_time_representative_normalized", label="Dataset"
+            x="TRAIN_SIZE", y="pred_time_representative-20000_normalized", label="Dataset"
         )
         ax.set_xlabel("Number of training compounds")
         ax.set_ylabel("Inference time per 1000 compounds (s)")
@@ -308,7 +308,7 @@ def main():
         texts = [
             ax.text(x, y, dataset, fontsize=8)
             for _, dataset, x, y in df[
-                ["DISPLAY_NAME", "TRAIN_SIZE", "pred_time_representative_normalized"]
+                ["DISPLAY_NAME", "TRAIN_SIZE", "pred_time_representative-20000_normalized"]
             ].itertuples()
         ]
         adjustText.adjust_text(
