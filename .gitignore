@@ -1,9 +1,11 @@
 __pycache__
 .venv*
-logs
-top_models
 
-catboost*
+top_models/*
+!top_models/vnn
+!top_models/bhsai_automl_pipeline
+
+visualization/*
 visualization/out
 
 out-*
