@@ -6,7 +6,7 @@ top_models/*
 !top_models/bhsai_automl_pipeline
 
 visualization/*
-visualization/out
+!visualization/out
 
 out-*
 flaml/
