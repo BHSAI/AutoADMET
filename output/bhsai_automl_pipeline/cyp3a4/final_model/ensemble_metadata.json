@@ -1,0 +1,72 @@
+{
+  "type": "stacking_ensemble",
+  "base_models": [
+    {
+      "descriptor": "Morgan",
+      "model": "XGBoost"
+    },
+    {
+      "descriptor": "Mordred",
+      "model": "XGBoost"
+    },
+    {
+      "descriptor": "Mordred",
+      "model": "LightGBM"
+    },
+    {
+      "descriptor": "Morgan",
+      "model": "LightGBM"
+    },
+    {
+      "descriptor": "Morgan",
+      "model": "RandomForest"
+    }
+  ],
+  "meta_learner": "LogisticRegression",
+  "top_k": 5,
+  "selection_metric": "Kappa",
+  "hyperparameters": {
+    "Morgan_XGBoost": {
+      "n_estimators": 900,
+      "learning_rate": 0.03720797863492101,
+      "max_depth": 7,
+      "subsample": 0.613760973541834,
+      "colsample_bytree": 0.6315443330968378,
+      "min_child_weight": 2
+    },
+    "Mordred_XGBoost": {
+      "n_estimators": 800,
+      "learning_rate": 0.041989752130329815,
+      "max_depth": 9,
+      "subsample": 0.8978156416777785,
+      "colsample_bytree": 0.609161750619871,
+      "min_child_weight": 9
+    },
+    "Mordred_LightGBM": {
+      "n_estimators": 900,
+      "learning_rate": 0.0288058284164798,
+      "max_depth": 9,
+      "num_leaves": 47,
+      "lambda_l1": 0.0004249615885396386,
+      "lambda_l2": 4.028480704807937e-07
+    },
+    "Morgan_LightGBM": {
+      "n_estimators": 800,
+      "learning_rate": 0.04286063634224435,
+      "max_depth": 11,
+      "num_leaves": 297,
+      "lambda_l1": 0.00038126240861848805,
+      "lambda_l2": 2.035824987245908e-07
+    },
+    "Morgan_RandomForest": {
+      "n_estimators": 900,
+      "max_depth": 28,
+      "min_samples_split": 3,
+      "min_samples_leaf": 1,
+      "max_features": "sqrt"
+    }
+  },
+  "timestamp": "2026-06-26T18:05:31.652626",
+  "training_samples": 7542,
+  "test_samples": 1885
+}

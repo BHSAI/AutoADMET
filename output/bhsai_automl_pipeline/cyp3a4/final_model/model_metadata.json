@@ -1,0 +1,19 @@
+{
+  "descriptor": "Morgan",
+  "model": "XGBoost",
+  "scaler_type": "None",
+  "hyperparameters": {
+    "n_estimators": 900,
+    "learning_rate": 0.03720797863492101,
+    "max_depth": 7,
+    "subsample": 0.613760973541834,
+    "colsample_bytree": 0.6315443330968378,
+    "min_child_weight": 2
+  },
+  "timestamp": "2026-06-26T18:05:34.912252",
+  "model_file": "Morgan_XGBoost_model.pkl",
+  "scaler_file": "Morgan_XGBoost_scaler.pkl",
+  "training_samples": 7542,
+  "test_samples": 1885,
+  "feature_dim": 2048
+}

@@ -1,0 +1,18 @@
+{
+  "descriptor": "Mordred",
+  "model": "RandomForest",
+  "scaler_type": "MinMaxScaler",
+  "hyperparameters": {
+    "n_estimators": 1000,
+    "max_depth": 30,
+    "min_samples_split": 5,
+    "min_samples_leaf": 6,
+    "max_features": "sqrt"
+  },
+  "timestamp": "2026-06-26T17:03:29.542451",
+  "model_file": "Mordred_RandomForest_model.pkl",
+  "scaler_file": "Mordred_RandomForest_scaler.pkl",
+  "training_samples": 5900,
+  "test_samples": 1475,
+  "feature_dim": 437
+}
