@@ -1,7 +1,5 @@
 __pycache__
 .venv*
-models
-leaderboards
 logs
 top_models
 
