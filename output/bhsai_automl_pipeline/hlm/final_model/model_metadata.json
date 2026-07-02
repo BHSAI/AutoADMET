@@ -10,7 +10,7 @@
     "colsample_bytree": 0.6191899957060044,
     "min_child_weight": 2
   },
-  "timestamp": "2026-06-29T15:46:10.972208",
+  "timestamp": "2026-07-02T09:26:58.542460",
   "model_file": "Morgan_XGBoost_model.pkl",
   "scaler_file": "Morgan_XGBoost_scaler.pkl",
   "training_samples": 2462,

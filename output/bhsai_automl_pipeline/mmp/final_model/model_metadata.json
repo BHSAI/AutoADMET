@@ -10,7 +10,7 @@
     "lambda_l1": 1.0258494473254814e-07,
     "lambda_l2": 1.1807511361477443e-06
   },
-  "timestamp": "2026-06-29T16:31:23.685698",
+  "timestamp": "2026-07-02T09:25:47.680252",
   "model_file": "Mordred_LightGBM_model.pkl",
   "scaler_file": "Mordred_LightGBM_scaler.pkl",
   "training_samples": 4782,

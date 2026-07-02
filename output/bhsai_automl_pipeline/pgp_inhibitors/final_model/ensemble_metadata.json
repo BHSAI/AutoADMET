@@ -58,7 +58,7 @@
       "solver": "lbfgs"
     }
   },
-  "timestamp": "2026-06-29T17:17:33.393564",
+  "timestamp": "2026-07-02T09:23:27.452180",
   "training_samples": 1709,
   "test_samples": 427
 }

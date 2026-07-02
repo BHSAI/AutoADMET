@@ -9,5 +9,5 @@ Precision,0.0
 F1,0.0
 MCC,0.0
 Kappa,0.0
-Prediction Time,111.92761522694491
-Prediction Time Normalized,0.02238552304538898
+Prediction Time,0.45600914116948843
+Prediction Time Normalized,9.120182823389768e-05

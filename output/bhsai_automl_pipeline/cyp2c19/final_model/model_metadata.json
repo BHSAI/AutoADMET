@@ -9,7 +9,7 @@
     "min_samples_leaf": 9,
     "max_features": "sqrt"
   },
-  "timestamp": "2026-06-26T16:05:38.171153",
+  "timestamp": "2026-07-02T09:26:54.455819",
   "model_file": "Mordred_RandomForest_model.pkl",
   "scaler_file": "Mordred_RandomForest_scaler.pkl",
   "training_samples": 6150,
