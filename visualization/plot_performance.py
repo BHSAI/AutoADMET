@@ -168,49 +168,62 @@ def main():
         )
 
     #  Plot time test performance
-    for time_key, time_display_name, unit, multiplier in [
-        ("train_time_normalized", "Training time, per 1000 compounds", "h", 1 / 3600),
+    for time_key, time_display_name, unit, multiplier, y_max in [
+        (
+            "train_time_normalized",
+            "Training time, per 1000 compounds",
+            "h",
+            1 / 3600,
+            None,
+        ),
         (
             "pred_time_normalized",
             "Inference time on test set, per 1,000 compounds",
             "s",
             1,
+            None,
         ),
         (
             "pred_time_representative-20000_normalized",
             "Inference time on 20,000 compound sample from all datasets, per 1,000 compounds",
             "s",
             1,
+            0.55,
         ),
         (
             "pred_time_representative-10000_normalized",
             "Inference time on 10,000 compound sample from all datasets, per 1,000 compounds",
             "s",
             1,
+            0.55,
         ),
         (
             "pred_time_representative-5000_normalized",
             "Inference time on 5,000 compound sample from all datasets, per 1,000 compounds",
             "s",
             1,
+            0.55,
         ),
         (
             "pred_time_representative-2500_normalized",
             "Inference time on 2,500 compound sample from all datasets, per 1,000 compounds",
             "s",
             1,
+            0.55,
         ),
         (
             "pred_time_small_compounds_normalized",
             "Inference time on small compounds, per 1,000 compounds",
             "s",
             1,
+            0.55,
         ),
         (
             "pred_time_large_compounds_normalized",
             "Inference time on large compounds, per 1,000 compounds",
             "s",
             1,
+            0.55,
         ),
     ]:
         fig = plt.figure(figsize=(12, 6))
@@ -221,7 +234,8 @@ def main():
         ax.set_title(time_display_name)
         ax.set_xlabel("Dataset")
         ax.set_ylabel(f"Normalized time ({unit})")
-        # ax.set_ylim(bottom=0, top=3.1)
+        if y_max:
+            ax.set_ylim(bottom=0, top=y_max)
         for _, row in combined_performance_df.iterrows():
             dataset, framework, featurization = row[
                 ["dataset", "framework", "featurization"]
@@ -300,7 +314,9 @@ def main():
             df["pred_time_representative-20000_normalized"] * 1000
         )
         ax = df.plot.scatter(
-            x="TRAIN_SIZE", y="pred_time_representative-20000_normalized", label="Dataset"
+            x="TRAIN_SIZE",
+            y="pred_time_representative-20000_normalized",
+            label="Dataset",
         )
         ax.set_xlabel("Number of training compounds")
         ax.set_ylabel("Inference time per 1000 compounds (s)")
@@ -308,7 +324,11 @@ def main():
         texts = [
             ax.text(x, y, dataset, fontsize=8)
             for _, dataset, x, y in df[
-                ["DISPLAY_NAME", "TRAIN_SIZE", "pred_time_representative-20000_normalized"]
+                [
+                    "DISPLAY_NAME",
+                    "TRAIN_SIZE",
+                    "pred_time_representative-20000_normalized",
+                ]
             ].itertuples()
         ]
         adjustText.adjust_text(
