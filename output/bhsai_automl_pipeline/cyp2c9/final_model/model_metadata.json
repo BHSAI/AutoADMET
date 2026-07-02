@@ -1,0 +1,18 @@
+{
+  "descriptor": "Morgan",
+  "model": "RandomForest",
+  "scaler_type": "None",
+  "hyperparameters": {
+    "n_estimators": 1000,
+    "max_depth": 30,
+    "min_samples_split": 10,
+    "min_samples_leaf": 3,
+    "max_features": "sqrt"
+  },
+  "timestamp": "2026-07-02T09:27:36.570991",
+  "model_file": "Morgan_RandomForest_model.pkl",
+  "scaler_file": "Morgan_RandomForest_scaler.pkl",
+  "training_samples": 6089,
+  "test_samples": 1522,
+  "feature_dim": 2048
+}

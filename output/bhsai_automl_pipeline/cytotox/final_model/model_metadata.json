@@ -1,0 +1,19 @@
+{
+  "descriptor": "Morgan",
+  "model": "LightGBM",
+  "scaler_type": "None",
+  "hyperparameters": {
+    "n_estimators": 700,
+    "learning_rate": 0.13275584007373772,
+    "max_depth": 9,
+    "num_leaves": 25,
+    "lambda_l1": 0.001427963447285434,
+    "lambda_l2": 0.29500744281008673
+  },
+  "timestamp": "2026-07-02T09:26:38.274037",
+  "model_file": "Morgan_LightGBM_model.pkl",
+  "scaler_file": "Morgan_LightGBM_scaler.pkl",
+  "training_samples": 4706,
+  "test_samples": 1177,
+  "feature_dim": 2048
+}

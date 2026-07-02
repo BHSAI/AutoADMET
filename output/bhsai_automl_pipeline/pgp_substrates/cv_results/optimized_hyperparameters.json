@@ -1,0 +1,68 @@
+{
+  "Morgan_KNN": {
+    "n_neighbors": 1
+  },
+  "Morgan_Bayesian": {
+    "alpha": 0.27382823174636955
+  },
+  "Morgan_LogisticRegression": {
+    "C": 0.5825057579497064,
+    "solver": "saga"
+  },
+  "Morgan_RandomForest": {
+    "n_estimators": 200,
+    "max_depth": 17,
+    "min_samples_split": 19,
+    "min_samples_leaf": 4,
+    "max_features": "sqrt"
+  },
+  "Morgan_LightGBM": {
+    "n_estimators": 200,
+    "learning_rate": 0.04894128625230027,
+    "max_depth": 12,
+    "num_leaves": 206,
+    "lambda_l1": 0.009755248644284632,
+    "lambda_l2": 4.891961845552166e-05
+  },
+  "Morgan_XGBoost": {
+    "n_estimators": 500,
+    "learning_rate": 0.15460897148026218,
+    "max_depth": 7,
+    "subsample": 0.7927689842549248,
+    "colsample_bytree": 0.7799666236327718,
+    "min_child_weight": 7
+  },
+  "Mordred_KNN": {
+    "n_neighbors": 1
+  },
+  "Mordred_Bayesian": {
+    "alpha": 0.09973634589837851
+  },
+  "Mordred_LogisticRegression": {
+    "C": 59.311007916377434,
+    "solver": "lbfgs"
+  },
+  "Mordred_RandomForest": {
+    "n_estimators": 800,
+    "max_depth": 22,
+    "min_samples_split": 9,
+    "min_samples_leaf": 2,
+    "max_features": "sqrt"
+  },
+  "Mordred_LightGBM": {
+    "n_estimators": 500,
+    "learning_rate": 0.07406153924647432,
+    "max_depth": 12,
+    "num_leaves": 255,
+    "lambda_l1": 4.474568862689028e-07,
+    "lambda_l2": 0.32146750093574156
+  },
+  "Mordred_XGBoost": {
+    "n_estimators": 200,
+    "learning_rate": 0.06786789844805004,
+    "max_depth": 7,
+    "subsample": 0.8451210164218432,
+    "colsample_bytree": 0.6124384349391055,
+    "min_child_weight": 6
+  }
+}
