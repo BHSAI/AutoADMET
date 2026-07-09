@@ -24,8 +24,6 @@ ORDERED_FRAMEWORKS = {
     for idx, framework in enumerate(
         [
             "vnn",
-            "flaml",
-            "autogluon",
             "bhsai_automl",
         ]
     )
@@ -98,47 +96,59 @@ def main():
 
     combined_performance_df = make_combined_performance_df()
 
+    plt.rcParams["font.family"] = "serif"
+    plt.rcParams["mathtext.fontset"] = "dejavuserif"
+
     # Make plot configurations
-    fit_configs = [
-        ("vnn", "morgan_fp", 0, "vNN - Morgan Fingerprints"),
+    plot_configs = [
+        (
+            "vnn",
+            "morgan_fp",
+            0,
+            "vNN - Morgan Fingerprints",
+            "#56B4E9",
+        ),
         (
             "bhsai_automl",
             "morgan_fp",
             1,
             "BHSAI AutoML Pipeline Best Predictor - Morgan Fingerprints",
+            "#F0E442",
         ),
         (
             "bhsai_automl",
             "mordred_desc",
             1,
             "BHSAI AutoML Pipeline Best Predictor - Mordred Descriptors",
+            "#E69F00",
         ),
-        ("bhsai_automl", "ensemble", 2, "BHSAI AutoML Pipeline Ensemble Predictor"),
+        (
+            "bhsai_automl",
+            "ensemble",
+            2,
+            "BHSAI AutoML Pipeline Ensemble Predictor",
+            "#009E73",
+        ),
     ]
-    num_configs = len(fit_configs)
-    colors = list(mcolors.TABLEAU_COLORS.keys())
-    colors = colors * int(1 + num_configs / len(colors))
     plot_configs = {
         (framework, featurization): (
-            colors[i],
+            color,
             offset * SPREAD / (3 - 1) - SPREAD / 2,
             display_name,
         )
-        for i, (framework, featurization, offset, display_name) in enumerate(
-            fit_configs
-        )
+        for framework, featurization, offset, display_name, color in plot_configs
     }
 
     #  Plot test performance
     for metric in METRICS:
-        fig = plt.figure(figsize=(12, 6))
+        fig = plt.figure(figsize=(12, 6), dpi=300)
         ax = fig.add_subplot()
         ax.set_ylim(bottom=0, top=1)
         ax.xaxis.set_ticks(
             datasets.index.to_numpy(), datasets["DISPLAY_NAME"], rotation=45, ha="right"
         )
         ax.set_title(f"Test {metric.capitalize()} 95% Confidence Interval")
-        ax.set_xlabel("Dataset")
+        ax.set_xlabel("Model")
         for _, row in combined_performance_df.iterrows():
             dataset, framework, featurization = row[
                 ["dataset", "framework", "featurization"]
@@ -226,13 +236,13 @@ def main():
             0.55,
         ),
     ]:
-        fig = plt.figure(figsize=(12, 6))
+        fig = plt.figure(figsize=(12, 6), dpi=300)
         ax = fig.add_subplot()
         ax.xaxis.set_ticks(
             datasets.index.to_numpy(), datasets["DISPLAY_NAME"], rotation=45, ha="right"
         )
         ax.set_title(time_display_name)
-        ax.set_xlabel("Dataset")
+        ax.set_xlabel("Model")
         ax.set_ylabel(f"Normalized time ({unit})")
         if y_max:
             ax.set_ylim(bottom=0, top=y_max)
@@ -262,11 +272,6 @@ def main():
         lambda row: plot_configs[(row["framework"], row["featurization"])][2],
         axis=1,
     )
-    combined_performance_df["config"] = combined_performance_df["config"].apply(
-        lambda config: str(config)
-        .removesuffix(" - Morgan Fingerprints")
-        .removesuffix(" - Mordred Descriptors")
-    )
     ranking = (
         combined_performance_df[["config", "dataset", "kappa"]]
         .sort_values("kappa", ascending=False)
@@ -275,20 +280,34 @@ def main():
 
     # Count ranks for each configuration
     ranking_counts = defaultdict(lambda: defaultdict(lambda: 0))
-    num_configs = ranking["config"].drop_duplicates().shape[0]
     unique_datasets = ranking["dataset"].drop_duplicates()
     for dataset in unique_datasets:
         dataset_ranking = ranking[ranking["dataset"] == dataset].reset_index(drop=True)
-        for i in range(num_configs):
+        for i in range(3):
             ranking_counts[dataset_ranking["config"][i]][i + 1] += 1
 
     # Plot stacked bar chart
-    ax = pd.DataFrame(ranking_counts).fillna(0).plot.bar(stacked=True)
+    ax = (
+        pd.DataFrame(ranking_counts)
+        .sort_index(axis=1)
+        .fillna(0)
+        .plot.bar(
+            stacked=True,
+            color={
+                display_name: color
+                for (color, _, display_name) in plot_configs.values()
+            },
+        )
+    )
     ax.set_xlabel("Rank")
     ax.set_ylabel("Number of Models")
     ax.set_xticklabels(["1st", "2nd", "3rd"])
     ax.legend(bbox_to_anchor=(1, 1), loc="upper left", title="Models")
-    ax.figure.savefig(f"visualization/out/ranking_stacked_bar.png", bbox_inches="tight")  # type: ignore
+    ax.figure.savefig(  # type: ignore
+        f"visualization/out/ranking_stacked_bar.png",
+        bbox_inches="tight",
+        dpi=300,
+    )
 
     # Make inference time scatter plot
     for index, name in [
@@ -316,7 +335,7 @@ def main():
         ax = df.plot.scatter(
             x="TRAIN_SIZE",
             y="pred_time_representative-20000_normalized",
-            label="Dataset",
+            label="Model",
         )
         ax.set_xlabel("Number of training compounds")
         ax.set_ylabel("Inference time per 1000 compounds (s)")
@@ -336,11 +355,14 @@ def main():
             expand=(2, 2),
             arrowprops=dict(arrowstyle="-", lw=1),
             min_arrow_len=0,
-            force_static=(1, 1),
             ax=ax,
             color="gray",
         )
-        ax.figure.savefig(f"visualization/out/inference_time_scatter_plot.{name.lower().replace(" ", "_")}.png", bbox_inches="tight")  # type: ignore
+        ax.figure.savefig(  # type: ignore
+            f"visualization/out/inference_time_scatter_plot.{name.lower().replace(" ", "_")}.png",
+            bbox_inches="tight",
+            dpi=300,
+        )
 
 
 if __name__ == "__main__":
