@@ -111,7 +111,7 @@ def save_top_model_metrics(
     y_test: np.ndarray,
     top_performing_metrics_file: str,
     time_benchmark_test_sets: dict[str, pd.DataFrame],
-    out_of_domain_file: str | None = None,
+    pred_file: str,
 ):
     best_model_config = grid_search_results.iloc[0]
     best_model = VariableNearestNeighborsClassifier(
@@ -120,14 +120,7 @@ def save_top_model_metrics(
     best_model.fit(X_train, y_train)
 
     y_pred, test_pred_time, test_pred_time_norm = predict_test_set(best_model, X_test)
-
-    out_of_domain = np.isnan(y_pred)
-    if out_of_domain_file is not None:
-        np.save(out_of_domain_file, out_of_domain)
-    num_out_of_domain = out_of_domain.sum()
-    coverage = 1 - num_out_of_domain / len(y_test)
-    y_test = y_test[~out_of_domain]
-    y_pred = y_pred[~out_of_domain]
+    np.save(pred_file, y_pred)
 
     extra_time_benchmarks = {
         f"pred_time_{key}_normalized": predict_test_set(best_model, test_set)[2]
@@ -137,7 +130,6 @@ def save_top_model_metrics(
     performance = {
         "smoothing_factor": best_model_config["SmoothFactor"],
         "distance_threshold": best_model_config["TanimotoDistance"],
-        "coverage": coverage,
         **conf_interval_dict(y_test, y_pred, "kappa", metrics.cohen_kappa_score),
         **conf_interval_dict(y_test, y_pred, "accuracy", metrics.accuracy_score),
         **conf_interval_dict(
@@ -175,17 +167,10 @@ def main(use_prefit: bool):
         per_fold_leaderboard_file = (
             f"output/vnn/leaderboards/leaderboard-per_forld.{config_id_str}.csv"
         )
-        leaderboard_file_app_domain = (
-            f"output/vnn/leaderboards/leaderboard-app_domain.{config_id_str}.csv"
-        )
-        per_fold_leaderboard_file_app_domain = f"output/vnn/leaderboards/leaderboard-per_fold-app_domain.{config_id_str}.csv"
         train_time_file = f"output/vnn/leaderboards/train_time.{config_id_str}.txt"
         plot_file = f"output/vnn/plots/plot.{config_id_str}.png"
         top_performing_metrics_file = f"top_models/vnn/top_model.{config_id_str}.csv"
-        top_performing_metrics_file_app_domain = (
-            f"top_models/vnn/top_model-app_domain.{config_id_str}.csv"
-        )
-        out_of_domain_file = f"data/preprocessed/{dataset}/out_of_domain"
+        pred_file = f"data/preprocessed/{dataset}/y_pred.csv"
         for directory in ["leaderboards", "plots", "top_models"]:
             Path(f"output/vnn/{directory}").mkdir(exist_ok=True, parents=True)
         Path(f"top_models/vnn").mkdir(exist_ok=True, parents=True)
@@ -213,30 +198,9 @@ def main(use_prefit: bool):
             train_time = time.perf_counter() - hpo_start
             with open(train_time_file, "w") as file:
                 file.write(str(train_time))
-
-            app_domain_results, per_fold_results_app_domain = (
-                vnn_admet.vnn_search_provided_space(
-                    coo_array(X_train),
-                    y_train,
-                    smoothing_factor_space=smoothing_factor_search_space,
-                    tanimoto_threshold_space=[distance_threshold],
-                    n_folds=5,
-                    n_repeats=5,
-                )
-            )
-            app_domain_results = app_domain_results.sort_values(
-                "kappa", ascending=False
-            )
-            app_domain_results.to_csv(leaderboard_file_app_domain, index=False)
-            per_fold_results_app_domain.to_csv(
-                per_fold_leaderboard_file_app_domain, index=False
-            )
         else:
             grid_search_results = pd.read_csv(leaderboard_file).sort_values(
                 "kappa", ascending=False
-            )
-            app_domain_results = pd.read_csv(leaderboard_file_app_domain).sort_values(
-                "SmoothFactor"
             )
             with open(train_time_file, "r") as file:
                 train_time = float(file.read())
@@ -271,18 +235,7 @@ def main(use_prefit: bool):
             y_test,
             top_performing_metrics_file,
             time_benchmark_test_sets,
-        )
-
-        save_top_model_metrics(
-            app_domain_results,
-            train_time,
-            X_train,
-            y_train,
-            X_test,
-            y_test,
-            top_performing_metrics_file_app_domain,
-            time_benchmark_test_sets,
-            out_of_domain_file=out_of_domain_file,
+            pred_file=pred_file,
         )
 
 
