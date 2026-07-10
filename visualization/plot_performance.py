@@ -90,14 +90,10 @@ def make_combined_performance_df() -> pd.DataFrame:
     )
     return combined_performance_df
 
-
 def main():
     Path("visualization/out").mkdir(exist_ok=True)
 
     combined_performance_df = make_combined_performance_df()
-
-    plt.rcParams["font.family"] = "serif"
-    plt.rcParams["mathtext.fontset"] = "dejavuserif"
 
     # Make plot configurations
     plot_configs = [
@@ -145,7 +141,10 @@ def main():
         ax = fig.add_subplot()
         ax.set_ylim(bottom=0, top=1)
         ax.xaxis.set_ticks(
-            datasets.index.to_numpy(), datasets["DISPLAY_NAME"], rotation=45, ha="right"
+            datasets.index.to_numpy(),
+            datasets["DISPLAY_NAME"],
+            rotation=45,
+            ha="right",
         )
         ax.set_title(f"Test {metric.capitalize()} 95% Confidence Interval")
         ax.set_xlabel("Model")
