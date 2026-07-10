@@ -170,7 +170,7 @@ def main(use_prefit: bool):
         train_time_file = f"output/vnn/leaderboards/train_time.{config_id_str}.txt"
         plot_file = f"output/vnn/plots/plot.{config_id_str}.png"
         top_performing_metrics_file = f"top_models/vnn/top_model.{config_id_str}.csv"
-        pred_file = f"data/preprocessed/{dataset}/y_pred.csv"
+        pred_file = f"top_models/vnn/y_pred.{dataset}"
         for directory in ["leaderboards", "plots", "top_models"]:
             Path(f"output/vnn/{directory}").mkdir(exist_ok=True, parents=True)
         Path(f"top_models/vnn").mkdir(exist_ok=True, parents=True)
