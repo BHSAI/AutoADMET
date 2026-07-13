@@ -32,7 +32,7 @@ def main():
                 .reset_index(drop=True)
                 for dataset in DATASETS
             ],
-        ).sample(20_000, random_state=SEED).reset_index(drop=True)
+        ).reset_index(drop=True)
         df["SMILES_LEN"] = df["CANONICAL_SMILES"].map(len)
         df = df.sort_values("SMILES_LEN")
 
@@ -43,7 +43,7 @@ def main():
         largest_5_percent = pd.concat([largest_5_percent] * 5)
 
         Path("data/preprocessed/time_benchmark").mkdir(parents=True, exist_ok=True)
-        df.to_csv(
+        df.sample(20_000, random_state=SEED).to_csv(
             f"data/preprocessed/time_benchmark/representative-20000.{featurization}.csv",
             index=False,
         )
