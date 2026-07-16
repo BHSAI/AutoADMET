@@ -4,6 +4,7 @@ __pycache__
 top_models/*
 !top_models/vnn
 !top_models/bhsai_automl_pipeline
+!top_models/applicability_domain
 
 visualization/*
 !visualization/out
