@@ -60,12 +60,23 @@ def evaluate(
     y_pred: np.ndarray,
     **kwargs,
 ) -> dict:
+    tn, fp, fn, tp = metrics.confusion_matrix(y_test, y_pred).ravel().tolist()
+    pre = ((tp + fn) * (tp + fp) + (fp + tn) * (tn + fn)) / (len(y_test) ** 2)
     return {
         "kappa": metrics.cohen_kappa_score(y_test, y_pred),
+        "Pr(e)": pre,
         "accuracy": metrics.accuracy_score(y_test, y_pred),
         "recall": metrics.recall_score(y_test, y_pred, pos_label=1),
         "specificity": metrics.recall_score(y_test, y_pred, pos_label=0),
         **kwargs,
+        "tn": tn,
+        "fp": fp,
+        "fn": fn,
+        "tp": tp,
+        "negative": tn + fp,
+        "positive": fn + tp,
+        "pred_neg": tn + fn,
+        "pred_pos": tp + fp,
     }
 
 
@@ -177,7 +188,7 @@ def get_metrics_for_dataset(
 def make_applicability_domain_performance_plot(df: pd.DataFrame):
     fig = plt.figure(figsize=(12, 6), dpi=300)
     ax = fig.add_subplot()
-    ax.set_ylim(bottom=0, top=1)
+    ax.set_ylim(bottom=-0.05, top=1)
     _ = ax.xaxis.set_ticks(
         datasets.index.to_numpy(),
         datasets["DISPLAY_NAME"],
