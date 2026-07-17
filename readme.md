@@ -30,15 +30,21 @@ Replace `[python-3.12]` with the location of your Python 3.12 executable, e.g. `
 
 [python-3.12] -m venv .venv-automl
 .venv-automl\Scripts\pip.exe install -r requirements-automl.txt
+
+[python-3.12] -m venv bcrp_classify\.venv
+bcrp_classify\.venv\Scripts\pip.exe install -r bcrp_classify\requirements.txt
 ```
 
 #### Linux
 ```
 [python-3.12] -m venv .venv-preprocessing
-.venv-preprocessing\bin\pip install -r requirements-preprocessing.txt
+.venv-preprocessing/bin/pip install -r requirements-preprocessing.txt
 
 [python-3.12] -m venv .venv-automl
-.venv-automl\bin\pip install -r requirements-automl.txt
+.venv-automl/bin/pip install -r requirements-automl.txt
+
+[python-3.12] -m venv bcrp_classify/.venv
+bcrp_classify/.venv/bin/pip install -r bcrp_classify/requirements.txt
 ```
 
 # Preprocessing

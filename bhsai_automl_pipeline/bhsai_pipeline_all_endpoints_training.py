@@ -9,7 +9,7 @@ from confidenceinterval import bootstrap
 import argparse
 import subprocess
 
-PIPELINE_REPO_PATH = "../bcrp_classify"
+PIPELINE_REPO_PATH = "./bcrp_classify"
 
 DATASETS = [
     "ames",
