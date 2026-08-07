@@ -63,14 +63,14 @@ To fit predictors using the frameworks run the following:
 
 **vNN:** `python vnn\vnn\vnn_all_endpoints_hpo.py`
 
-**BHSAI AutoML Pipeline:** `python bhsai_automl_pipeline/bhsai_pipeline_all_endpoints_training.py`
+**AutoADMET Pipeline:** `python bhsai_automl_pipeline/bhsai_pipeline_all_endpoints_training.py`
 
-Both of the above scripts include options to skip the time-consuming hyperparameter search. For vNN, use `--use_prefit`. For BHSAI AutoML Pipeline, use `--mode` with option `skip-cv` to skip the hyperparameter search, `load-model` to skip the ensembling and refitting the optimal model with full data, or `parse-results-only` to skip model evaluation and regenerate performance plots with previously collected performance data.
+Both of the above scripts include options to skip the time-consuming hyperparameter search. For vNN, use `--use_prefit`. For AutoADMET Pipeline, use `--mode` with option `skip-cv` to skip the hyperparameter search, `load-model` to skip the ensembling and refitting the optimal model with full data, or `parse-results-only` to skip model evaluation and regenerate performance plots with previously collected performance data.
 
 # Visualization
 
-Run the following to generate validation performance comparisons between vNN and the individual models that the BHSAI AutoML Pipeline trains:
+Run the following to generate validation performance comparisons between vNN and the individual models that the AutoADMET Pipeline trains:
 `python visualization\plot_significance_tests.py`
 
-And the following to generate evaluation performance comparisons between vNN, the best validating model from the BHSAI AutoML Pipeline, and its ensemble model:
+And the following to generate evaluation performance comparisons between vNN, the best validating model from the AutoADMET Pipeline, and its ensemble model:
 `python visualization\plot_performance.py`

@@ -108,21 +108,21 @@ def main():
             "bhsai_automl",
             "morgan_fp",
             1,
-            "BHSAI AutoML Pipeline Best Predictor - Morgan Fingerprints",
+            "AutoADMET Pipeline Best Predictor - Morgan Fingerprints",
             "#F0E442",
         ),
         (
             "bhsai_automl",
             "mordred_desc",
             1,
-            "BHSAI AutoML Pipeline Best Predictor - Mordred Descriptors",
+            "AutoADMET Pipeline Best Predictor - Mordred Descriptors",
             "#E69F00",
         ),
         (
             "bhsai_automl",
             "ensemble",
             2,
-            "BHSAI AutoML Pipeline Ensemble Predictor",
+            "AutoADMET Pipeline Ensemble Predictor",
             "#009E73",
         ),
     ]
@@ -314,12 +314,12 @@ def main():
         (
             (combined_performance_df["framework"] == "bhsai_automl")
             & (combined_performance_df["featurization"] != "ensemble"),
-            "BHSAI AutoML best predictor",
+            "AutoADMET best predictor",
         ),
         (
             (combined_performance_df["framework"] == "bhsai_automl")
             & (combined_performance_df["featurization"] == "ensemble"),
-            "BHSAI AutoML ensemble",
+            "AutoADMET ensemble",
         ),
     ]:
         df = combined_performance_df[index].copy()

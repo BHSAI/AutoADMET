@@ -293,7 +293,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--pipeline_repo_path",
         default=PIPELINE_REPO_PATH,
-        help="The path to the BHSAI AutoML pipeline repository.",
+        help="The path to the AutoADMET pipeline repository.",
     )
     args = parser.parse_args()
 
