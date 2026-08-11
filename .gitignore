@@ -3,11 +3,8 @@ __pycache__
 
 top_models/*
 !top_models/vnn
-!top_models/bhsai_automl_pipeline
+!top_models/autoadmet_pipeline
 !top_models/applicability_domain
-
-visualization/*
-!visualization/out
 
 out-*
 flaml/
@@ -18,13 +15,13 @@ autogluon/
 
 output/*
 !output/vnn
-!output/bhsai_automl_pipeline
+!output/autoadmet_pipeline
 
-output/bhsai_automl_pipeline/*/*/*
-!output/bhsai_automl_pipeline/*/*/*_metadata.json
-!output/bhsai_automl_pipeline/*/*/*_metrics.csv
-!output/bhsai_automl_pipeline/*/*/*_model.pkl
-!output/bhsai_automl_pipeline/*/*/*_scaler.pkl
-!output/bhsai_automl_pipeline/*/cv_results/*
+output/autoadmet_pipeline/*/*/*
+!output/autoadmet_pipeline/*/*/*_metadata.json
+!output/autoadmet_pipeline/*/*/*_metrics.csv
+!output/autoadmet_pipeline/*/*/*_model.pkl
+!output/autoadmet_pipeline/*/*/*_scaler.pkl
+!output/autoadmet_pipeline/*/cv_results/*
 
 descriptor_cache

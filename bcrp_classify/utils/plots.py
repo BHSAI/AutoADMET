@@ -208,11 +208,11 @@ def plot_boxplots(data, x, y, hue=None, title="Box Plot",
         ax.set_xlabel(xlabel, fontsize=18)
     if ylabel:
         ax.set_ylabel(ylabel, fontsize=18)
-    ax.tick_params(labelsize=14)
+    ax.tick_params(labelsize=16)
 
     plt.xticks(rotation=45, ha='right')
     if hue:
-        plt.legend(title='', frameon=False, fontsize=12)
+        plt.legend(title='', frameon=False, fontsize=16)
     plt.tight_layout()
 
     if save_path:

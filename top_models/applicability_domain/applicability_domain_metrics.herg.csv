@@ -1,4 +1,4 @@
-,vnn-morgan_fp,vnn-morgan_fp,vnn-morgan_fp,bhsai_automl-mordred_desc,bhsai_automl-mordred_desc,bhsai_automl-mordred_desc,bhsai_automl-ensemble,bhsai_automl-ensemble,bhsai_automl-ensemble
+,vnn-morgan_fp,vnn-morgan_fp,vnn-morgan_fp,autoadmet-mordred_desc,autoadmet-mordred_desc,autoadmet-mordred_desc,autoadmet-ensemble,autoadmet-ensemble,autoadmet-ensemble
 ,full,inside_app_dom,outside_app_dom,full,inside_app_dom,outside_app_dom,full,inside_app_dom,outside_app_dom
 kappa,0.5835393853761921,0.6248812915479582,0.44680851063829785,0.7086503570174412,0.7472808701215612,0.6225806451612903,0.5845177963115236,0.6248812915479582,0.47651006711409394
 Pr(e),0.5050987704679214,0.4938311168082038,0.5828402366863905,0.5021851873433949,0.49911873097260057,0.5414201183431953,0.5039333372181108,0.4938311168082038,0.5591715976331361

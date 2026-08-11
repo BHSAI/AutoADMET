@@ -4,22 +4,9 @@ import pandas as pd
 import math
 
 FEATURIZATIONS = ["morgan_fp", "mordred_desc", "canonical_smiles"]
-DATASETS = [
-    "ames",
-    "bbb",
-    "cyp1a2",
-    "cyp2c9",
-    "cyp2c19",
-    "cyp2d6",
-    "cyp3a4",
-    "cytotox",
-    "dili",
-    "herg",
-    "hlm",
-    "mmp",
-    "pgp_inhibitors",
-    "pgp_substrates",
-]
+datasets = pd.read_csv(Path(__file__).parent / "data" / "dataset_config.csv")[
+    "DATASET"
+].to_list()
 SEED = 1031
 
 
@@ -30,7 +17,7 @@ def main():
                 pd.read_csv(f"data/preprocessed/{dataset}/{featurization}.all.csv")
                 .sample(1500, replace=True, random_state=SEED)
                 .reset_index(drop=True)
-                for dataset in DATASETS
+                for dataset in datasets
             ],
         ).reset_index(drop=True)
         df["SMILES_LEN"] = df["CANONICAL_SMILES"].map(len)

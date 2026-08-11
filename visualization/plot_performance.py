@@ -10,10 +10,11 @@ from pathlib import Path
 from collections import defaultdict
 import adjustText
 
-datasets = pd.read_csv(Path(__file__).parent / "dataset_config.csv")
+datasets = pd.read_csv(Path(__file__).parent.parent / "data" / "dataset_config.csv")
 datasets = datasets.sort_values("FULL_SIZE").reset_index(drop=True)
 
-SPREAD = 0.33
+USE_EXTRA_FRAMEWORKS = False
+SPREAD = 0.75 if USE_EXTRA_FRAMEWORKS else 0.33
 TICK_WIDTH = 0.08
 METRICS = ["kappa", "accuracy", "recall", "specificity"]
 
@@ -24,7 +25,7 @@ ORDERED_FRAMEWORKS = {
     for idx, framework in enumerate(
         [
             "vnn",
-            "bhsai_automl",
+            "autoadmet",
         ]
     )
 }
@@ -41,8 +42,73 @@ ORDERED_FEATURIZATIONS = {
 }
 
 
+# Make plot configurations
+PLOT_CONFIGS = [
+    (
+        "vnn",
+        "morgan_fp",
+        0,
+        "vNN - Morgan Fingerprints",
+        "#56B4E9",
+    ),
+    (
+        "autoadmet",
+        "morgan_fp",
+        1,
+        "AutoADMET Pipeline Best Predictor - Morgan Fingerprints",
+        "#F0E442",
+    ),
+    (
+        "autoadmet",
+        "mordred_desc",
+        1,
+        "AutoADMET Pipeline Best Predictor - Mordred Descriptors",
+        "#E69F00",
+    ),
+    (
+        "autoadmet",
+        "ensemble",
+        2,
+        "AutoADMET Pipeline Ensemble Predictor",
+        "#009E73",
+    ),
+]
+
+PLOT_CONFIGS_EXTRA_FRAMEWORKS = [
+    (
+        "autogluon",
+        "morgan_fp",
+        3,
+        "AutoGluon - Morgan Fingerprints",
+        "#D55E00",
+    ),
+    (
+        "autogluon",
+        "mordred_desc",
+        4,
+        "AutoGluon - Mordred Descriptors",
+        "#CC79A7",
+    ),
+    (
+        "flaml",
+        "morgan_fp",
+        5,
+        "FLAML - Morgan Fingerprints",
+        "#0072B2",
+    ),
+    (
+        "flaml",
+        "mordred_desc",
+        6,
+        "FLAML - Mordred Descriptors",
+        "#000000",
+    ),
+]
+
+
 def make_combined_performance_df() -> pd.DataFrame:
-    vnn_performances: list[pd.DataFrame] = []
+    performance_dfs: list[pd.DataFrame] = []
+
     for dataset in datasets["DATASET"]:
         try:
             filename = f"top_models/vnn/top_model.{dataset}.morgan_fp.csv"
@@ -50,14 +116,13 @@ def make_combined_performance_df() -> pd.DataFrame:
             df.insert(0, "featurization", "morgan_fp")
             df.insert(0, "dataset", dataset)
             df.insert(0, "framework", "vnn")
-            vnn_performances.append(df)
+            performance_dfs.append(df)
         except Exception:
             print(f"No vNN performance for {dataset}")
 
-    bhsai_pipeline_performances: list[pd.DataFrame] = []
     for dataset in datasets["DATASET"]:
         try:
-            filename = f"top_models/bhsai_automl_pipeline/top_model.{dataset}.csv"
+            filename = f"top_models/autoadmet_pipeline/top_model.{dataset}.csv"
             df = pd.read_csv(filename)
             top_featurization, _ = str.split(df["details"][0], "-")
             top_featurization = {"Morgan": "morgan_fp", "Mordred": "mordred_desc"}[
@@ -65,17 +130,37 @@ def make_combined_performance_df() -> pd.DataFrame:
             ]
             df.insert(0, "featurization", [top_featurization, "ensemble"])
             df.insert(0, "dataset", dataset)
-            df.insert(0, "framework", "bhsai_automl")
-            bhsai_pipeline_performances.append(df)
+            df.insert(0, "framework", "autoadmet")
+            performance_dfs.append(df)
         except Exception:
             print(f"No BHSAI internal pipeline performance for {dataset}")
 
-    combined_performance_df: pd.DataFrame = pd.concat(
-        [
-            *vnn_performances,
-            *bhsai_pipeline_performances,
-        ]
-    )
+    if USE_EXTRA_FRAMEWORKS:
+        for dataset, featurization in it.product(datasets["DATASET"], FEATURIZATIONS):
+            try:
+                filename = f"top_models/autogluon/top_model.{dataset}.{featurization}.quadratic_kappa.no_time_limit.csv"
+                df = pd.read_csv(filename)
+                df.insert(0, "featurization", featurization)
+                df.insert(0, "dataset", dataset)
+                df.insert(0, "framework", "autogluon")
+                performance_dfs.append(df)
+            except Exception:
+                print(f"No AutoGluon performance for {dataset}, {featurization}")
+
+        for dataset, featurization in it.product(datasets["DATASET"], FEATURIZATIONS):
+            try:
+                filename = (
+                    f"top_models/flaml/top_model.{dataset}.{featurization}.75min.csv"
+                )
+                df = pd.read_csv(filename)
+                df.insert(0, "featurization", featurization)
+                df.insert(0, "dataset", dataset)
+                df.insert(0, "framework", "flaml")
+                performance_dfs.append(df)
+            except Exception:
+                print(f"No FLAML performance for {dataset}, {featurization}")
+
+    combined_performance_df: pd.DataFrame = pd.concat(performance_dfs)
 
     # Add normalized training time
     combined_performance_df = combined_performance_df.reset_index(drop=True)
@@ -85,55 +170,38 @@ def make_combined_performance_df() -> pd.DataFrame:
     )
 
     combined_performance_df.to_csv(
-        "visualization/out/combined_performance.csv",
+        f"visualization/out/combined_performance{"-extra_frameworks" if USE_EXTRA_FRAMEWORKS else ""}.csv",
         index=False,
     )
     return combined_performance_df
+
 
 def main():
     Path("visualization/out").mkdir(exist_ok=True)
 
     combined_performance_df = make_combined_performance_df()
 
-    # Make plot configurations
-    plot_configs = [
-        (
-            "vnn",
-            "morgan_fp",
-            0,
-            "vNN - Morgan Fingerprints",
-            "#56B4E9",
-        ),
-        (
-            "bhsai_automl",
-            "morgan_fp",
-            1,
-            "BHSAI AutoML Pipeline Best Predictor - Morgan Fingerprints",
-            "#F0E442",
-        ),
-        (
-            "bhsai_automl",
-            "mordred_desc",
-            1,
-            "BHSAI AutoML Pipeline Best Predictor - Mordred Descriptors",
-            "#E69F00",
-        ),
-        (
-            "bhsai_automl",
-            "ensemble",
-            2,
-            "BHSAI AutoML Pipeline Ensemble Predictor",
-            "#009E73",
-        ),
+    plot_configs_to_use = [
+        *PLOT_CONFIGS,
+        *(PLOT_CONFIGS_EXTRA_FRAMEWORKS if USE_EXTRA_FRAMEWORKS else []),
     ]
+
+    n_offsets = len({offset for _, _, offset, _, _ in plot_configs_to_use})
     plot_configs = {
         (framework, featurization): (
             color,
-            offset * SPREAD / (3 - 1) - SPREAD / 2,
+            offset * SPREAD / (n_offsets - 1) - SPREAD / 2,
             display_name,
         )
-        for framework, featurization, offset, display_name, color in plot_configs
+        for framework, featurization, offset, display_name, color in plot_configs_to_use
     }
+
+    combined_performance_df = combined_performance_df[
+        combined_performance_df.apply(
+            lambda row: (row["framework"], row["featurization"]) in plot_configs,
+            axis=1,
+        )
+    ]
 
     #  Plot test performance
     for metric in METRICS:
@@ -148,10 +216,12 @@ def main():
         )
         ax.set_title(f"Test {metric.capitalize()} 95% Confidence Interval")
         ax.set_xlabel("Model")
+        ax.set_ylabel(metric.capitalize())
         for _, row in combined_performance_df.iterrows():
             dataset, framework, featurization = row[
                 ["dataset", "framework", "featurization"]
             ]
+
             bottom, center, top = row[[f"{metric}-lb", metric, f"{metric}-ub"]]
             color, offset, _ = plot_configs[(framework, featurization)]
             x = datasets[datasets["DATASET"] == dataset].index[0] + offset
@@ -249,6 +319,7 @@ def main():
             dataset, framework, featurization = row[
                 ["dataset", "framework", "featurization"]
             ]
+
             y = row[time_key] * 1000 * multiplier
             color, offset, _ = plot_configs[(framework, featurization)]
             x = datasets[datasets["DATASET"] == dataset].index[0] + offset
@@ -312,14 +383,14 @@ def main():
     for index, name in [
         (combined_performance_df["framework"] == "vnn", "vNN"),
         (
-            (combined_performance_df["framework"] == "bhsai_automl")
+            (combined_performance_df["framework"] == "autoadmet")
             & (combined_performance_df["featurization"] != "ensemble"),
-            "BHSAI AutoML best predictor",
+            "AutoADMET best predictor",
         ),
         (
-            (combined_performance_df["framework"] == "bhsai_automl")
+            (combined_performance_df["framework"] == "autoadmet")
             & (combined_performance_df["featurization"] == "ensemble"),
-            "BHSAI AutoML ensemble",
+            "AutoADMET ensemble",
         ),
     ]:
         df = combined_performance_df[index].copy()

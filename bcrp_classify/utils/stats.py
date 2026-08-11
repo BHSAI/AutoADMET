@@ -429,8 +429,10 @@ def plot_combined_cd(df, metrics, save_path):
         )
         avg_rank = df_wide.rank(axis=1, pct=True).mean()
         pc = sp.posthoc_conover_friedman(df_wide, p_adjust="holm")
-        sp.critical_difference_diagram(avg_rank, pc, ax=axes[i])
-        axes[i].set_title(metric_display)
+        font_size = 16
+        sp.critical_difference_diagram(avg_rank, pc, ax=axes[i], label_props={"size": font_size})
+        axes[i].set_title(metric_display, size=font_size)
+        axes[i].tick_params(labelsize=font_size)
 
     plt.tight_layout()
     figure.savefig(save_path, dpi=200, bbox_inches="tight", facecolor="white")
