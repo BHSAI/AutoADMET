@@ -5,10 +5,10 @@ top_models/*
 !top_models/vnn
 !top_models/autoadmet_pipeline
 !top_models/applicability_domain
+!top_models/autogluon
+!top_models/flaml
 
 out-*
-flaml/
-autogluon/
 /data/preprocessed/*/*mordred_desc*
 /data/preprocessed/*/*morgan_fp*
 /data/preprocessed/*/out_of_domain.npy
