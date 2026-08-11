@@ -11,22 +11,9 @@ import subprocess
 
 PIPELINE_REPO_PATH = "./bcrp_classify"
 
-DATASETS = [
-    "ames",
-    "bbb",
-    "cyp1a2",
-    "cyp2c9",
-    "cyp2c19",
-    "cyp2d6",
-    "cyp3a4",
-    "cytotox",
-    "dili",
-    "herg",
-    "hlm",
-    "mmp",
-    "pgp_inhibitors",
-    "pgp_substrates",
-]
+datasets = pd.read_csv(Path(__file__).parent / "data" / "dataset_config.csv")[
+    "DATASET"
+].to_list()
 CLASS_COL = "CLASS"
 
 
@@ -200,7 +187,7 @@ def main(mode: str, pipeline_repo_path: str):
     logger = logging.getLogger(__name__)
     logging.basicConfig(level=logging.INFO)
     logger.info("Starting")
-    for dataset in DATASETS:
+    for dataset in datasets:
         logger.info(f"Working on {dataset} data")
 
         # Get filenames

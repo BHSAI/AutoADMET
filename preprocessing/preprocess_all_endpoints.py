@@ -1,26 +1,16 @@
-import preprocess_compounds
+from pathlib import Path
 
-DATASETS = [
-    "ames",
-    "bbb",
-    "cyp1a2",
-    "cyp2c9",
-    "cyp2c19",
-    "cyp2d6",
-    "cyp3a4",
-    "cytotox",
-    "dili",
-    "herg",
-    "hlm",
-    "mmp",
-    "pgp_inhibitors",
-    "pgp_substrates",
-]
+import preprocess_compounds
+import pandas as pd
+
+datasets = pd.read_csv(Path(__file__).parent / "data" / "dataset_config.csv")[
+    "DATASET"
+].to_list()
 
 
 def main():
     for featurization in preprocess_compounds.featurizers.keys():
-        for dataset in DATASETS:
+        for dataset in datasets:
             preprocess_compounds.preprocess_compounds(
                 raw_data_csv=f"./data/raw/{dataset}.csv",
                 output_dir=f"./data/preprocessed/{dataset}",

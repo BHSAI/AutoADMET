@@ -2,11 +2,11 @@ from pathlib import Path
 
 import pandas as pd
 
-PIPELINE_REPO_PATH = "../bcrp_classify"
+PIPELINE_REPO_PATH = "bcrp_classify"
 
 
 def main():
-    datasets = pd.read_csv(Path(__file__).parent / "dataset_config.csv")["DATASET"]
+    datasets = pd.read_csv(Path(__file__).parent.parent / "data" / "dataset_config.csv")["DATASET"]
 
     for dataset in datasets:
         top_vnn_aggregate_stats = (
@@ -67,7 +67,7 @@ def main():
         import subprocess
 
         subprocess.run(
-            f'../bcrp_classify/.venv/Scripts/python.exe ../bcrp_classify/pipeline.py \
+            f'{PIPELINE_REPO_PATH}/.venv/Scripts/python.exe {PIPELINE_REPO_PATH}/pipeline.py \
                 --output "output/bhsai_automl_pipeline/{dataset}/cv_results" \
                 --plot-only',
         ).check_returncode()

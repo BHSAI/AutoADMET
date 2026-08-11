@@ -13,22 +13,7 @@ from vnn.variable_nearest_neighbor import VariableNearestNeighborsClassifier
 from scipy.sparse import coo_array
 import argparse
 
-DATASETS = [
-    ("ames", 0.5),
-    ("bbb", 0.6),
-    ("cyp1a2", 0.5),
-    ("cyp2c9", 0.5),
-    ("cyp2c19", 0.5),
-    ("cyp2d6", 0.5),
-    ("cyp3a4", 0.5),
-    ("cytotox", 0.4),
-    ("dili", 0.6),
-    ("herg", 0.7),
-    ("hlm", 0.4),
-    ("mmp", 0.5),
-    ("pgp_inhibitors", 0.5),
-    ("pgp_substrates", 0.6),
-]
+datasets = pd.read_csv(Path(__file__).parent / "data" / "dataset_config.csv")["DATASET"]
 FEATURIZATIONS = ["morgan_fp"]
 CLASS_COL = "CLASS"
 
@@ -152,8 +137,8 @@ def main(use_prefit: bool):
     logging.basicConfig(level=logging.INFO)
     logger.info("Starting")
 
-    for (dataset, distance_threshold), featurization in it.product(
-        DATASETS, FEATURIZATIONS
+    for dataset, featurization in it.product(
+        datasets["DATASET"], FEATURIZATIONS
     ):
         logger.info(f"Working on {dataset} {featurization} data")
 

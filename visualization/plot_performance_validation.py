@@ -11,7 +11,7 @@ from pathlib import Path
 from collections import defaultdict
 import adjustText
 
-datasets = pd.read_csv(Path(__file__).parent / "dataset_config.csv")
+datasets = pd.read_csv(Path(__file__).parent.parent / "data" / "dataset_config.csv")
 datasets = datasets.sort_values("FULL_SIZE").reset_index(drop=True)
 
 SPREAD = 0.33
@@ -134,7 +134,7 @@ def main():
     vnn_per_fold_results["framework"] = "vnn"
 
     # Read in dataset config
-    dataset_config = pd.read_csv("C:/Users/zsmith/Documents/GitHub/AutoML/visualization/dataset_config.csv")
+    dataset_config = pd.read_csv("visualization/dataset_config.csv")
     dataset_config = dataset_config[["DATASET", "DISPLAY_NAME", "TRAIN_SIZE"]]
     dataset_config = dataset_config.sort_values("TRAIN_SIZE").reset_index(drop=True)
 
