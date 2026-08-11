@@ -25,7 +25,7 @@ ORDERED_FRAMEWORKS = {
     for idx, framework in enumerate(
         [
             "vnn",
-            "bhsai_automl",
+            "autoadmet",
         ]
     )
 }
@@ -52,21 +52,21 @@ PLOT_CONFIGS = [
         "#56B4E9",
     ),
     (
-        "bhsai_automl",
+        "autoadmet",
         "morgan_fp",
         1,
         "AutoADMET Pipeline Best Predictor - Morgan Fingerprints",
         "#F0E442",
     ),
     (
-        "bhsai_automl",
+        "autoadmet",
         "mordred_desc",
         1,
         "AutoADMET Pipeline Best Predictor - Mordred Descriptors",
         "#E69F00",
     ),
     (
-        "bhsai_automl",
+        "autoadmet",
         "ensemble",
         2,
         "AutoADMET Pipeline Ensemble Predictor",
@@ -122,7 +122,7 @@ def make_combined_performance_df() -> pd.DataFrame:
 
     for dataset in datasets["DATASET"]:
         try:
-            filename = f"top_models/bhsai_automl_pipeline/top_model.{dataset}.csv"
+            filename = f"top_models/autoadmet_pipeline/top_model.{dataset}.csv"
             df = pd.read_csv(filename)
             top_featurization, _ = str.split(df["details"][0], "-")
             top_featurization = {"Morgan": "morgan_fp", "Mordred": "mordred_desc"}[
@@ -130,7 +130,7 @@ def make_combined_performance_df() -> pd.DataFrame:
             ]
             df.insert(0, "featurization", [top_featurization, "ensemble"])
             df.insert(0, "dataset", dataset)
-            df.insert(0, "framework", "bhsai_automl")
+            df.insert(0, "framework", "autoadmet")
             performance_dfs.append(df)
         except Exception:
             print(f"No BHSAI internal pipeline performance for {dataset}")
@@ -383,12 +383,12 @@ def main():
     for index, name in [
         (combined_performance_df["framework"] == "vnn", "vNN"),
         (
-            (combined_performance_df["framework"] == "bhsai_automl")
+            (combined_performance_df["framework"] == "autoadmet")
             & (combined_performance_df["featurization"] != "ensemble"),
             "AutoADMET best predictor",
         ),
         (
-            (combined_performance_df["framework"] == "bhsai_automl")
+            (combined_performance_df["framework"] == "autoadmet")
             & (combined_performance_df["featurization"] == "ensemble"),
             "AutoADMET ensemble",
         ),

@@ -25,7 +25,7 @@ ORDERED_FRAMEWORKS = {
     for idx, framework in enumerate(
         [
             "vnn",
-            "bhsai_automl",
+            "autoadmet",
         ]
     )
 }
@@ -48,13 +48,13 @@ def make_combined_cv_dfs() -> tuple[pd.DataFrame, pd.DataFrame]:
     for dataset in datasets["DATASET"]:
         try:
             results_summary_file = (
-                f"output/bhsai_automl_pipeline/{dataset}/cv_results/results_summary.csv"
+                f"output/autoadmet_pipeline/{dataset}/cv_results/results_summary.csv"
             )
             results_summary = pd.read_csv(results_summary_file)
             results_summary.insert(0, "dataset", dataset)
             results_summary_dfs.append(results_summary)
 
-            per_fold_results_file = f"output/bhsai_automl_pipeline/{dataset}/cv_results/per_fold_results.csv"
+            per_fold_results_file = f"output/autoadmet_pipeline/{dataset}/cv_results/per_fold_results.csv"
             per_fold_results = pd.read_csv(per_fold_results_file)
             per_fold_results.insert(0, "dataset", dataset)
             per_fold_results_dfs.append(per_fold_results)
@@ -89,14 +89,14 @@ def main():
             "#56B4E9",
         ),
         (
-            "bhsai_automl",
+            "autoadmet",
             "morgan_fp",
             1,
             "AutoADMET Pipeline Best Predictor - Morgan Fingerprints",
             "#F0E442",
         ),
         (
-            "bhsai_automl",
+            "autoadmet",
             "mordred_desc",
             1,
             "AutoADMET Pipeline Best Predictor - Mordred Descriptors",
@@ -127,7 +127,7 @@ def main():
         == "both"
     )
     best_model_per_fold_results = per_fold_results[is_best_model].copy()
-    best_model_per_fold_results["framework"] = "bhsai_automl"
+    best_model_per_fold_results["framework"] = "autoadmet"
 
     # Get the per fold results for only the vNN models
     vnn_per_fold_results = per_fold_results[per_fold_results["Model"] == "vNN"].copy()

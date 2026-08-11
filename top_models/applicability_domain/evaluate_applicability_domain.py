@@ -20,21 +20,21 @@ plot_configs = [
         "#56B4E9",
     ),
     (
-        "bhsai_automl",
+        "autoadmet",
         "morgan_fp",
         1,
         "AutoADMET Pipeline Best Predictor - Morgan Fingerprints",
         "#F0E442",
     ),
     (
-        "bhsai_automl",
+        "autoadmet",
         "mordred_desc",
         1,
         "AutoADMET Pipeline Best Predictor - Mordred Descriptors",
         "#E69F00",
     ),
     (
-        "bhsai_automl",
+        "autoadmet",
         "ensemble",
         2,
         "AutoADMET Pipeline Ensemble Predictor",
@@ -150,7 +150,7 @@ def get_metrics_for_dataset(
     )
 
     y_pred_automl_best = pd.read_csv(
-        f"output/bhsai_automl_pipeline/{dataset}/final_model/best_model_test_predictions.csv"
+        f"output/autoadmet_pipeline/{dataset}/final_model/best_model_test_predictions.csv"
     )["Predicted_Label"].to_numpy()
     automl_best_metrics = evaluate_with_applicability_domain(
         y_test=y_test,
@@ -158,18 +158,18 @@ def get_metrics_for_dataset(
         y_within_app_dom=y_within_app_dom,
     )
     with open(
-        f"output/bhsai_automl_pipeline/{dataset}/final_model/model_metadata.json"
+        f"output/autoadmet_pipeline/{dataset}/final_model/model_metadata.json"
     ) as file:
         automl_best_descriptor = json.load(file)["descriptor"]
     automl_best_metrics.columns = pd.MultiIndex.from_product(
         [
-            [f"bhsai_automl-{DESCIPTORS[automl_best_descriptor]}"],
+            [f"autoadmet-{DESCIPTORS[automl_best_descriptor]}"],
             automl_best_metrics.columns,
         ],
     )
 
     y_pred_automl_ensemble = pd.read_csv(
-        f"output/bhsai_automl_pipeline/{dataset}/final_model/ensemble_test_predictions.csv"
+        f"output/autoadmet_pipeline/{dataset}/final_model/ensemble_test_predictions.csv"
     )["Predicted_Label"].to_numpy()
     automl_ensemble_metrics = evaluate_with_applicability_domain(
         y_test=y_test,
@@ -177,7 +177,7 @@ def get_metrics_for_dataset(
         y_within_app_dom=y_within_app_dom,
     )
     automl_ensemble_metrics.columns = pd.MultiIndex.from_product(
-        [["bhsai_automl-ensemble"], automl_ensemble_metrics.columns],
+        [["autoadmet-ensemble"], automl_ensemble_metrics.columns],
     )
 
     return pd.concat(

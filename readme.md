@@ -85,7 +85,7 @@ python vnn/vnn/vnn_all_endpoints_hpo.py
 
 ### AutoADMET Pipeline
 ``` sh
-python bhsai_automl_pipeline/bhsai_pipeline_all_endpoints_training.py
+python autoadmet_pipeline/bhsai_pipeline_all_endpoints_training.py
 ```
 
 When running the AutoADMET pipeline for training, ensure that vNN is NOT included in the configuration's list of models. Find this configuration at `bcrp_classify\config.py`.
@@ -102,7 +102,7 @@ python top_models/applicability_domain/evaluate_applicability_domain.py
 ```
 
 ### Granular validation performance and significance tests
-This script adds vNN validation performance to the AutoADMET validation performance record and reruns the AutoADMET validation performance plotting step. For each dataset, it will perform significance tests to compare the validation performance between vNN and the models that the AutoADMET pipeline trains. See the output at `output/bhsai_automl_pipeline/[DATASET]/cv_results/plots`.
+This script adds vNN validation performance to the AutoADMET validation performance record and reruns the AutoADMET validation performance plotting step. For each dataset, it will perform significance tests to compare the validation performance between vNN and the models that the AutoADMET pipeline trains. See the output at `output/autoadmet_pipeline/[DATASET]/cv_results/plots`.
 ``` sh
 python visualization/plot_significance_tests.py
 ```

@@ -40,7 +40,7 @@ def main():
         top_vnn_cross_val_stats["Model"] = "vNN"
 
         bhsai_cross_val_stats_file = (
-            f"output/bhsai_automl_pipeline/{dataset}/cv_results/per_fold_results.csv"
+            f"output/autoadmet_pipeline/{dataset}/cv_results/per_fold_results.csv"
         )
         bhsai_cross_val_stats = pd.read_csv(bhsai_cross_val_stats_file)
         if not (bhsai_cross_val_stats["Model"] == "vNN").any():
@@ -55,7 +55,7 @@ def main():
         top_vnn_aggregate_stats["Model"] = "vNN"
 
         bhsai_aggregate_stats_file = (
-            f"output/bhsai_automl_pipeline/{dataset}/cv_results/results_summary.csv"
+            f"output/autoadmet_pipeline/{dataset}/cv_results/results_summary.csv"
         )
         bhsai_aggregate_stats = pd.read_csv(bhsai_aggregate_stats_file)
         if not (bhsai_aggregate_stats["Model"] == "vNN").any():
@@ -68,7 +68,7 @@ def main():
 
         subprocess.run(
             f'{PIPELINE_REPO_PATH}/.venv/Scripts/python.exe {PIPELINE_REPO_PATH}/pipeline.py \
-                --output "output/bhsai_automl_pipeline/{dataset}/cv_results" \
+                --output "output/autoadmet_pipeline/{dataset}/cv_results" \
                 --plot-only',
         ).check_returncode()
 

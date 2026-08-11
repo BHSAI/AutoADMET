@@ -193,12 +193,12 @@ def main(mode: str, pipeline_repo_path: str):
         # Get filenames
         train_data_path = f"data/preprocessed/{dataset}/mordred_desc.train.csv"
         test_data_path = f"data/preprocessed/{dataset}/mordred_desc.test.csv"
-        output_path = f"output/bhsai_automl_pipeline/{dataset}"
+        output_path = f"output/autoadmet_pipeline/{dataset}"
         top_performing_metrics_file = (
-            f"top_models/bhsai_automl_pipeline/top_model.{dataset}.csv"
+            f"top_models/autoadmet_pipeline/top_model.{dataset}.csv"
         )
-        Path("output/bhsai_automl_pipeline").mkdir(exist_ok=True, parents=True)
-        Path("top_models/bhsai_automl_pipeline").mkdir(exist_ok=True, parents=True)
+        Path("output/autoadmet_pipeline").mkdir(exist_ok=True, parents=True)
+        Path("top_models/autoadmet_pipeline").mkdir(exist_ok=True, parents=True)
 
         if mode != "parse-results-only":
             if mode == "full":
