@@ -1,6 +1,6 @@
-# AutoML
+# AutoADMET
 
-This repository contains code to reproduce comparison of BHSAI's AutoML pipeline to the vNN-ADMET algorithm as applied to 14 binary classification ADMET endpoints: 
+This repository contains code to reproduce comparison of AutoADMET pipeline to the vNN-ADMET algorithm as applied to 14 binary classification ADMET endpoints: 
 - Chemical Mutagenicity (AMES)
 - Blood-Brain Barrier (BBB)
 - Cytochrome P450 Inhibition 1A2 (CYP1A2)
@@ -85,7 +85,7 @@ python vnn/vnn/vnn_all_endpoints_hpo.py
 
 ### AutoADMET Pipeline
 ``` sh
-python autoadmet_pipeline/bhsai_pipeline_all_endpoints_training.py
+python autoadmet_pipeline/autoadmet_pipeline_all_endpoints_training.py
 ```
 
 When running the AutoADMET pipeline for training, ensure that vNN is NOT included in the configuration's list of models. Find this configuration at `bcrp_classify\config.py`.
