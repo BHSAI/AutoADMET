@@ -14,6 +14,7 @@ datasets = pd.read_csv(Path(__file__).parent.parent / "data" / "dataset_config.c
 datasets = datasets.sort_values("FULL_SIZE").reset_index(drop=True)
 
 USE_EXTRA_FRAMEWORKS = False
+EXPORT_POSTFIX = "-extra_frameworks" if USE_EXTRA_FRAMEWORKS else ""
 SPREAD = 0.75 if USE_EXTRA_FRAMEWORKS else 0.33
 TICK_WIDTH = 0.08
 METRICS = ["kappa", "accuracy", "recall", "specificity"]
@@ -170,7 +171,7 @@ def make_combined_performance_df() -> pd.DataFrame:
     )
 
     combined_performance_df.to_csv(
-        f"visualization/out/combined_performance{"-extra_frameworks" if USE_EXTRA_FRAMEWORKS else ""}.csv",
+        f"visualization/out/combined_performance{EXPORT_POSTFIX}.csv",
         index=False,
     )
     return combined_performance_df
@@ -243,7 +244,8 @@ def main():
         ax.legend(*zip(*handles))
 
         fig.savefig(
-            f"visualization/out/confidence_intervals.{metric}.png", bbox_inches="tight"
+            f"visualization/out/confidence_intervals.{metric}{EXPORT_POSTFIX}.png",
+            bbox_inches="tight",
         )
 
     #  Plot time test performance
@@ -353,7 +355,7 @@ def main():
     unique_datasets = ranking["dataset"].drop_duplicates()
     for dataset in unique_datasets:
         dataset_ranking = ranking[ranking["dataset"] == dataset].reset_index(drop=True)
-        for i in range(3):
+        for i in range(n_offsets):
             ranking_counts[dataset_ranking["config"][i]][i + 1] += 1
 
     # Plot stacked bar chart
@@ -371,10 +373,10 @@ def main():
     )
     ax.set_xlabel("Rank")
     ax.set_ylabel("Number of Models")
-    ax.set_xticklabels(["1st", "2nd", "3rd"])
+    ax.set_xticklabels(["1st", "2nd", "3rd", "4th", "5th", "6th", "7th"][:n_offsets])
     ax.legend(bbox_to_anchor=(1, 1), loc="upper left", title="Models")
     ax.figure.savefig(  # type: ignore
-        f"visualization/out/ranking_stacked_bar.png",
+        f"visualization/out/ranking_stacked_bar{EXPORT_POSTFIX}.png",
         bbox_inches="tight",
         dpi=300,
     )
