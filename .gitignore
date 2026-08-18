@@ -1,5 +1,6 @@
 __pycache__
 .venv*
+*ignore.*
 
 top_models/*
 !top_models/vnn

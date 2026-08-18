@@ -18,22 +18,9 @@ import matplotlib.pyplot as plt
 import argparse
 from sklearn.model_selection import RepeatedStratifiedKFold
 
-DATASETS = [
-    "ames",
-    "bbb",
-    "cyp1a2",
-    "cyp2c9",
-    "cyp2c19",
-    "cyp2d6",
-    "cyp3a4",
-    "cytotox",
-    "dili",
-    "herg",
-    "hlm",
-    "mmp",
-    "pgp_inhibitors",
-    "pgp_substrates",
-]
+DATASETS = pd.read_csv(Path(__file__).parent / "data" / "dataset_config.csv")[
+    "DATASET"
+].to_list()
 FEATURIZATIONS = [
     "morgan_fp",
     "mordred_desc",

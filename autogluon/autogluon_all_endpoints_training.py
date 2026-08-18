@@ -15,22 +15,9 @@ from pathlib import Path
 from confidenceinterval import bootstrap
 import argparse
 
-DATASETS = [
-    "ames",
-    "bbb",
-    "cyp1a2",
-    "cyp2c9",
-    "cyp2c19",
-    "cyp2d6",
-    "cyp3a4",
-    "cytotox",
-    "dili",
-    "herg",
-    "hlm",
-    "mmp",
-    "pgp_inhibitors",
-    "pgp_substrates",
-]
+DATASETS = pd.read_csv(Path(__file__).parent / "data" / "dataset_config.csv")[
+    "DATASET"
+].to_list()
 FEATURIZATIONS = [
     "morgan_fp",
     "mordred_desc",
@@ -286,11 +273,13 @@ def main(use_prefit: bool):
             f"{TIME_LIMIT}min" if TIME_LIMIT is not None else "no_time_limit"
         )
         config_id_str = f"{dataset}.{featurization}.{EVAL_METRIC}.{time_limit_str}"
-        leaderboard_file = f"output/autogluon/leaderboards/leaderboard.{config_id_str}.csv"
-        train_time_file = f"output/autogluon/leaderboards/train_time.{config_id_str}.txt"
-        top_ensemble_leaderboard_file = (
-            f"output/autogluon/leaderboards/leaderboard.{config_id_str}.top_ensemble.csv"
+        leaderboard_file = (
+            f"output/autogluon/leaderboards/leaderboard.{config_id_str}.csv"
         )
+        train_time_file = (
+            f"output/autogluon/leaderboards/train_time.{config_id_str}.txt"
+        )
+        top_ensemble_leaderboard_file = f"output/autogluon/leaderboards/leaderboard.{config_id_str}.top_ensemble.csv"
         predictor_file = f"output/autogluon/models/model.{config_id_str}"
         top_performing_metrics_file = (
             f"top_models/autogluon/top_model.{config_id_str}.csv"
