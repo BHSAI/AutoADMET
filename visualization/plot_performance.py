@@ -177,34 +177,10 @@ def make_combined_performance_df() -> pd.DataFrame:
     return combined_performance_df
 
 
-def main():
-    Path("visualization/out").mkdir(exist_ok=True)
-
-    combined_performance_df = make_combined_performance_df()
-
-    plot_configs_to_use = [
-        *PLOT_CONFIGS,
-        *(PLOT_CONFIGS_EXTRA_FRAMEWORKS if USE_EXTRA_FRAMEWORKS else []),
-    ]
-
-    n_offsets = len({offset for _, _, offset, _, _ in plot_configs_to_use})
-    plot_configs = {
-        (framework, featurization): (
-            color,
-            offset * SPREAD / (n_offsets - 1) - SPREAD / 2,
-            display_name,
-        )
-        for framework, featurization, offset, display_name, color in plot_configs_to_use
-    }
-
-    combined_performance_df = combined_performance_df[
-        combined_performance_df.apply(
-            lambda row: (row["framework"], row["featurization"]) in plot_configs,
-            axis=1,
-        )
-    ]
-
-    #  Plot test performance
+def plot_test_performance(
+    combined_performance_df: pd.DataFrame,
+    plot_configs: dict[tuple[str, str], tuple[str, float, str]],
+):
     for metric in METRICS:
         fig = plt.figure(figsize=(12, 6), dpi=300)
         ax = fig.add_subplot()
@@ -248,7 +224,11 @@ def main():
             bbox_inches="tight",
         )
 
-    #  Plot time test performance
+
+def plot_time_performance(
+    combined_performance_df: pd.DataFrame,
+    plot_configs: dict[tuple[str, str], tuple[str, float, str]],
+):
     for time_key, time_display_name, unit, multiplier, y_max in [
         (
             "train_time_normalized",
@@ -339,18 +319,24 @@ def main():
 
         fig.savefig(f"visualization/out/{time_key}.png", bbox_inches="tight")
 
-    # Make stacked bar chart
+
+def plot_ranking_bar_chart(
+    combined_performance_df: pd.DataFrame,
+    plot_configs: dict[tuple[str, str], tuple[str, float, str]],
+    n_offsets: int,
+):
+    # Add column for configuration
     combined_performance_df["config"] = combined_performance_df.apply(
         lambda row: plot_configs[(row["framework"], row["featurization"])][2],
         axis=1,
     )
+
+    # Count ranks for each configuration
     ranking = (
         combined_performance_df[["config", "dataset", "kappa"]]
         .sort_values("kappa", ascending=False)
         .sort_values("dataset", kind="stable")
     )
-
-    # Count ranks for each configuration
     ranking_counts = defaultdict(lambda: defaultdict(lambda: 0))
     unique_datasets = ranking["dataset"].drop_duplicates()
     for dataset in unique_datasets:
@@ -381,7 +367,8 @@ def main():
         dpi=300,
     )
 
-    # Make inference time scatter plot
+
+def plot_inference_time_scatter_plots(combined_performance_df):
     for index, name in [
         (combined_performance_df["framework"] == "vnn", "vNN"),
         (
@@ -429,6 +416,7 @@ def main():
             min_arrow_len=0,
             ax=ax,
             color="gray",
+            iter_lim=100,
         )
         ax.figure.savefig(  # type: ignore
             f"visualization/out/inference_time_scatter_plot.{name.lower().replace(" ", "_")}.png",
@@ -436,6 +424,45 @@ def main():
             dpi=300,
         )
 
+
+def main():
+    Path("visualization/out").mkdir(exist_ok=True)
+
+    combined_performance_df = make_combined_performance_df()
+
+    plot_configs_to_use = [
+        *PLOT_CONFIGS,
+        *(PLOT_CONFIGS_EXTRA_FRAMEWORKS if USE_EXTRA_FRAMEWORKS else []),
+    ]
+
+    n_offsets = len({offset for _, _, offset, _, _ in plot_configs_to_use})
+    plot_configs = {
+        (framework, featurization): (
+            color,
+            offset * SPREAD / (n_offsets - 1) - SPREAD / 2,
+            display_name,
+        )
+        for framework, featurization, offset, display_name, color in plot_configs_to_use
+    }
+
+    combined_performance_df = combined_performance_df[
+        combined_performance_df.apply(
+            lambda row: (row["framework"], row["featurization"]) in plot_configs,
+            axis=1,
+        )
+    ]
+
+    # Plot test performance
+    plot_test_performance(combined_performance_df, plot_configs)
+
+    # Plot time test performance
+    plot_time_performance(combined_performance_df, plot_configs)
+
+    # Make stacked bar chart
+    plot_ranking_bar_chart(combined_performance_df, plot_configs, n_offsets)
+
+    # Make inference time scatter plot
+    plot_inference_time_scatter_plots(combined_performance_df)
 
 if __name__ == "__main__":
     main()
