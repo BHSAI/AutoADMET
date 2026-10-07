@@ -14,8 +14,15 @@ datasets = pd.read_csv(Path(__file__).parent.parent / "data" / "dataset_config.c
 datasets = datasets.sort_values("FULL_SIZE").reset_index(drop=True)
 
 USE_EXTRA_FRAMEWORKS = False
-EXPORT_POSTFIX = "-extra_frameworks" if USE_EXTRA_FRAMEWORKS else ""
-SPREAD = 0.75 if USE_EXTRA_FRAMEWORKS else 0.33
+if USE_EXTRA_FRAMEWORKS:
+    EXPORT_POSTFIX = "-extra_frameworks"
+    SPREAD = 0.55
+    FIGSIZE = (20, 6)
+else:
+    EXPORT_POSTFIX = ""
+    SPREAD = 0.33
+    FIGSIZE = (12, 6)
+
 TICK_WIDTH = 0.08
 METRICS = ["kappa", "accuracy", "recall", "specificity"]
 
@@ -182,7 +189,7 @@ def plot_test_performance(
     plot_configs: dict[tuple[str, str], tuple[str, float, str]],
 ):
     for metric in METRICS:
-        fig = plt.figure(figsize=(12, 6), dpi=300)
+        fig = plt.figure(figsize=FIGSIZE, dpi=300)
         ax = fig.add_subplot()
         ax.set_ylim(bottom=0, top=1)
         ax.xaxis.set_ticks(
@@ -287,7 +294,7 @@ def plot_time_performance(
             0.55,
         ),
     ]:
-        fig = plt.figure(figsize=(12, 6), dpi=300)
+        fig = plt.figure(figsize=FIGSIZE, dpi=300)
         ax = fig.add_subplot()
         ax.xaxis.set_ticks(
             datasets.index.to_numpy(), datasets["DISPLAY_NAME"], rotation=45, ha="right"
@@ -463,6 +470,7 @@ def main():
 
     # Make inference time scatter plot
     plot_inference_time_scatter_plots(combined_performance_df)
+
 
 if __name__ == "__main__":
     main()
