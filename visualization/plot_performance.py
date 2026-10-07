@@ -3,6 +3,7 @@ from pathlib import Path
 import pandas as pd
 import itertools as it
 from matplotlib.lines import Line2D
+from matplotlib.markers import MarkerStyle
 import matplotlib.pyplot as plt
 from matplotlib import colors as mcolors
 import numpy as np
@@ -58,6 +59,7 @@ PLOT_CONFIGS = [
         0,
         "vNN - Morgan Fingerprints",
         "#56B4E9",
+        "o",
     ),
     (
         "autoadmet",
@@ -65,6 +67,7 @@ PLOT_CONFIGS = [
         1,
         "AutoADMET Pipeline Best Predictor - Morgan Fingerprints",
         "#F0E442",
+        "o",
     ),
     (
         "autoadmet",
@@ -72,6 +75,7 @@ PLOT_CONFIGS = [
         1,
         "AutoADMET Pipeline Best Predictor - Mordred Descriptors",
         "#E69F00",
+        "s",
     ),
     (
         "autoadmet",
@@ -79,37 +83,74 @@ PLOT_CONFIGS = [
         2,
         "AutoADMET Pipeline Ensemble Predictor",
         "#009E73",
+        "D",
     ),
 ]
 
 PLOT_CONFIGS_EXTRA_FRAMEWORKS = [
     (
+        "vnn",
+        "morgan_fp",
+        0,
+        "vNN - Morgan Fingerprints",
+        "#56B4E9",
+        "o",
+    ),
+    (
+        "autoadmet",
+        "morgan_fp",
+        1,
+        "AutoADMET Pipeline - Best Predictor - Morgan Fingerprints",
+        "#000000",
+        "o",
+    ),
+    (
+        "autoadmet",
+        "mordred_desc",
+        1,
+        "AutoADMET Pipeline - Best Predictor - Mordred Descriptors",
+        "#000000",
+        "s",
+    ),
+    (
+        "autoadmet",
+        "ensemble",
+        2,
+        "AutoADMET Pipeline - Ensemble Predictor",
+        "#000000",
+        "D",
+    ),
+    (
         "autogluon",
         "morgan_fp",
         3,
         "AutoGluon - Morgan Fingerprints",
-        "#D55E00",
+        "#E69F00",
+        "o",
     ),
     (
         "autogluon",
         "mordred_desc",
         4,
         "AutoGluon - Mordred Descriptors",
-        "#CC79A7",
+        "#E69F00",
+        "s",
     ),
     (
         "flaml",
         "morgan_fp",
         5,
         "FLAML - Morgan Fingerprints",
-        "#0072B2",
+        "#009E73",
+        "o",
     ),
     (
         "flaml",
         "mordred_desc",
         6,
         "FLAML - Mordred Descriptors",
-        "#000000",
+        "#009E73",
+        "s",
     ),
 ]
 
@@ -186,7 +227,7 @@ def make_combined_performance_df() -> pd.DataFrame:
 
 def plot_test_performance(
     combined_performance_df: pd.DataFrame,
-    plot_configs: dict[tuple[str, str], tuple[str, float, str]],
+    plot_configs: dict[tuple[str, str], tuple[str, str, float, str]],
 ):
     for metric in METRICS:
         fig = plt.figure(figsize=FIGSIZE, dpi=300)
@@ -207,7 +248,7 @@ def plot_test_performance(
             ]
 
             bottom, center, top = row[[f"{metric}-lb", metric, f"{metric}-ub"]]
-            color, offset, _ = plot_configs[(framework, featurization)]
+            color, marker, offset, _ = plot_configs[(framework, featurization)]
             x = datasets[datasets["DATASET"] == dataset].index[0] + offset
             left = x - TICK_WIDTH / 2
             right = x + TICK_WIDTH / 2
@@ -215,15 +256,36 @@ def plot_test_performance(
             ax.plot([x, x], [top, bottom], color=color)
             ax.plot([left, right], [top, top], color=color)
             ax.plot([left, right], [bottom, bottom], color=color)
-            ax.plot(x, center, "o", color=color)
+            ax.plot(x, center, marker, color=color)
 
-        handles = [
-            (
-                Line2D([0], [0], color=color),
-                display_name,
-            )
-            for (color, _, display_name) in plot_configs.values()
-        ]
+        if USE_EXTRA_FRAMEWORKS:
+            handles = [
+                *[
+                    (
+                        Line2D([0], [0], color=color),
+                        display_name,
+                    )
+                    for color, display_name in {
+                        (color, display_name.split(" - ")[0]): ""
+                        for color, _, _, display_name in plot_configs.values()
+                    }.keys()
+                ],
+                (Line2D([0], [0], color="#AAAAAA", marker="o"), "Morgan Fingerprints"),
+                (Line2D([0], [0], color="#AAAAAA", marker="s"), "Mordred Descriptors"),
+                (
+                    Line2D([0], [0], color="#AAAAAA", marker="D"),
+                    "Ensemble of multiple featurizations",
+                ),
+            ]
+        else:
+            handles = [
+                (
+                    Line2D([0], [0], color=color, marker=marker),
+                    display_name,
+                )
+                for color, marker, _, display_name in plot_configs.values()
+            ]
+
         ax.legend(*zip(*handles))
 
         fig.savefig(
@@ -234,7 +296,7 @@ def plot_test_performance(
 
 def plot_time_performance(
     combined_performance_df: pd.DataFrame,
-    plot_configs: dict[tuple[str, str], tuple[str, float, str]],
+    plot_configs: dict[tuple[str, str], tuple[str, str, float, str]],
 ):
     for time_key, time_display_name, unit, multiplier, y_max in [
         (
@@ -310,7 +372,7 @@ def plot_time_performance(
             ]
 
             y = row[time_key] * 1000 * multiplier
-            color, offset, _ = plot_configs[(framework, featurization)]
+            color, marker, offset, _ = plot_configs[(framework, featurization)]
             x = datasets[datasets["DATASET"] == dataset].index[0] + offset
 
             ax.bar(x, height=y, width=0.1, color=color)
@@ -320,7 +382,7 @@ def plot_time_performance(
                 Line2D([0], [0], color=color),
                 display_name,
             )
-            for (color, _, display_name) in plot_configs.values()
+            for (color, marker, _, display_name) in plot_configs.values()
         ]
         ax.legend(*zip(*handles))
 
@@ -329,12 +391,12 @@ def plot_time_performance(
 
 def plot_ranking_bar_chart(
     combined_performance_df: pd.DataFrame,
-    plot_configs: dict[tuple[str, str], tuple[str, float, str]],
+    plot_configs: dict[tuple[str, str], tuple[str, str, float, str]],
     n_offsets: int,
 ):
     # Add column for configuration
     combined_performance_df["config"] = combined_performance_df.apply(
-        lambda row: plot_configs[(row["framework"], row["featurization"])][2],
+        lambda row: plot_configs[(row["framework"], row["featurization"])][3],
         axis=1,
     )
 
@@ -360,7 +422,7 @@ def plot_ranking_bar_chart(
             stacked=True,
             color={
                 display_name: color
-                for (color, _, display_name) in plot_configs.values()
+                for (color, marker, _, display_name) in plot_configs.values()
             },
         )
     )
@@ -437,19 +499,19 @@ def main():
 
     combined_performance_df = make_combined_performance_df()
 
-    plot_configs_to_use = [
-        *PLOT_CONFIGS,
-        *(PLOT_CONFIGS_EXTRA_FRAMEWORKS if USE_EXTRA_FRAMEWORKS else []),
-    ]
+    plot_configs_to_use = (
+        PLOT_CONFIGS_EXTRA_FRAMEWORKS if USE_EXTRA_FRAMEWORKS else PLOT_CONFIGS
+    )
 
-    n_offsets = len({offset for _, _, offset, _, _ in plot_configs_to_use})
+    n_offsets = len({offset for _, _, offset, _, _, _ in plot_configs_to_use})
     plot_configs = {
         (framework, featurization): (
             color,
+            marker,
             offset * SPREAD / (n_offsets - 1) - SPREAD / 2,
             display_name,
         )
-        for framework, featurization, offset, display_name, color in plot_configs_to_use
+        for framework, featurization, offset, display_name, color, marker in plot_configs_to_use
     }
 
     combined_performance_df = combined_performance_df[
