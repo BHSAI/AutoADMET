@@ -274,7 +274,7 @@ def plot_test_performance(
                 (Line2D([0], [0], color="#AAAAAA", marker="s"), "Mordred Descriptors"),
                 (
                     Line2D([0], [0], color="#AAAAAA", marker="D"),
-                    "Ensemble of multiple featurizations",
+                    "Ensemble of both featurizations",
                 ),
             ]
         else:
