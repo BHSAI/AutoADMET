@@ -11,6 +11,7 @@ from scipy.sparse import coo_array
 from vnn import variable_nearest_neighbor as vnn_lib
 
 APPLICABILITY_DOMAIN_TYPE = "vnn"
+APPLICABILITY_DOMAIN_TYPE_DISPLAY = "vNN"
 
 datasets = pd.read_csv("data/dataset_config.csv")
 datasets = datasets.sort_values("FULL_SIZE").reset_index(drop=True)
@@ -251,7 +252,7 @@ def make_applicability_domain_performance_plot(df: pd.DataFrame):
                 color, offset, _ = plot_configs[(framework, featurization)]  # type: ignore
                 x = datasets[datasets["DATASET"] == dataset].index[0] + offset
                 ax.plot(x, inside, "*", color=color)
-                ax.plot(x, full, "o", color=color)
+                ax.plot(x, full, "o", color=color, fillstyle="none")
                 ax.plot(x, outside, ".", color=color)
                 ax.plot(
                     [x, x],
@@ -265,7 +266,7 @@ def make_applicability_domain_performance_plot(df: pd.DataFrame):
             "Inside applicability domain",
         ),
         (
-            Line2D([], [], color="black", marker="o", linestyle="None"),
+            Line2D([], [], color="black", marker="o", linestyle="None", fillstyle="none"),
             "Full test set",
         ),
         (
@@ -283,7 +284,7 @@ def make_applicability_domain_performance_plot(df: pd.DataFrame):
         for (color, _, display_name) in plot_configs.values()  # type: ignore
     ]
     ax.legend(*zip(*handles), loc="upper right")
-    ax.set_title("Performance on vNN applicability domain")
+    ax.set_title(f"Performance on {APPLICABILITY_DOMAIN_TYPE_DISPLAY} applicability domain")
     ax.set_xlabel("Model")
     ax.set_ylabel("Kappa")
     fig.savefig(f"visualization/out/applicability_domain-{APPLICABILITY_DOMAIN_TYPE}-kappa.png", bbox_inches="tight")
