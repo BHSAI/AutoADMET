@@ -134,7 +134,7 @@ def main():
     vnn_per_fold_results["framework"] = "vnn"
 
     # Read in dataset config
-    dataset_config = pd.read_csv("visualization/dataset_config.csv")
+    dataset_config = pd.read_csv("data/dataset_config.csv")
     dataset_config = dataset_config[["DATASET", "DISPLAY_NAME", "TRAIN_SIZE"]]
     dataset_config = dataset_config.sort_values("TRAIN_SIZE").reset_index(drop=True)
 

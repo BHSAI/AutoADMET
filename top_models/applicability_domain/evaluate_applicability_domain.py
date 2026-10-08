@@ -1,14 +1,18 @@
 import json
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
+import sklearn.metrics as metrics
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
-from vnn import variable_nearest_neighbor as vnn_lib
-import sklearn.metrics as metrics
-import pandas as pd
-import numpy as np
+from scipy.sparse import coo_array
 
-datasets = pd.read_csv("visualization/dataset_config.csv")
+from vnn import variable_nearest_neighbor as vnn_lib
+
+APPLICABILITY_DOMAIN_TYPE = "vnn"
+
+datasets = pd.read_csv("data/dataset_config.csv")
 datasets = datasets.sort_values("FULL_SIZE").reset_index(drop=True)
 SPREAD = 0.33
 plot_configs = [
@@ -107,13 +111,7 @@ def evaluate_with_applicability_domain(
     )
 
 
-def get_y_test_and_applicability_domain(
-    dataset: str,
-    distance_threshold: float,
-) -> tuple[
-    np.ndarray[tuple[int], np.dtype[np.floating]],
-    np.ndarray[tuple[int], np.dtype[np.bool_]],
-]:
+def load_data(dataset: str) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     train = pd.read_csv(f"data/preprocessed/{dataset}/morgan_fp.train.csv")
     X_train = train[[col for col in train.columns if "FEATURE_" in col]].to_numpy()
     y_train = train["CLASS"].to_numpy()
@@ -122,22 +120,72 @@ def get_y_test_and_applicability_domain(
     X_test = test[[col for col in test.columns if "FEATURE_" in col]].to_numpy()
     y_test = test["CLASS"].to_numpy()
 
+    return X_train, y_train, X_test, y_test
+
+
+def get_vnn_applicability_domain(
+    X_train: np.ndarray,
+    X_test: np.ndarray,
+    distance_threshold: float,
+):
     restr_app_dom_predictor = vnn_lib.VariableNearestNeighborsClassifier(
         1, distance_threshold
     )
-    restr_app_dom_predictor.fit(X_train, y_train)
+    restr_app_dom_predictor.fit(X_train, np.zeros(X_train.shape[0]))
     y_within_app_dom = ~np.isnan(restr_app_dom_predictor.predict(X_test))
 
-    return y_test, y_within_app_dom
+    return y_within_app_dom
+
+
+def get_general_applicability_domain(
+    X_train: np.ndarray,
+    X_test: np.ndarray,
+    n_neighbors: int,
+    z_score: float,
+):
+    train_train_dist = vnn_lib.tanimoto_distance_matrix(
+        coo_array(X_train),
+        coo_array(X_train),
+    )
+    train_train_dist.sort()
+    nn_dist = train_train_dist[:, 1 : n_neighbors + 1]
+
+    mean_nn_dist = nn_dist.mean(axis=1)
+    cutoff = mean_nn_dist.mean() + z_score * np.std(mean_nn_dist)
+
+    test_train_dist = vnn_lib.tanimoto_distance_matrix(
+        coo_array(X_test),
+        coo_array(X_train),
+    )
+    test_train_dist.sort()
+    nn_dist_test = test_train_dist[:, 1 : n_neighbors + 1]
+
+    mean_nn_dist_test = nn_dist_test.mean(axis=1)
+
+    y_within_app_dom = mean_nn_dist_test <= cutoff
+    return y_within_app_dom
 
 
 def get_metrics_for_dataset(
     dataset: str,
     distance_threshold: float,
+    applicability_domain: str,
 ) -> pd.DataFrame:
-    y_test, y_within_app_dom = get_y_test_and_applicability_domain(
-        dataset, distance_threshold
-    )
+    X_train, _, X_test, y_test = load_data(dataset)
+
+    if applicability_domain == "vnn":
+        y_within_app_dom = get_vnn_applicability_domain(
+            X_train=X_train,
+            X_test=X_test,
+            distance_threshold=distance_threshold,
+        )
+    else:
+        y_within_app_dom = get_general_applicability_domain(
+            X_train=X_train,
+            X_test=X_test,
+            n_neighbors=5,
+            z_score=1,
+        )
 
     y_pred_vnn = np.load(f"top_models/vnn/y_pred.{dataset}.npy")
     vnn_metrics = evaluate_with_applicability_domain(
@@ -238,19 +286,23 @@ def make_applicability_domain_performance_plot(df: pd.DataFrame):
     ax.set_title("Performance on vNN applicability domain")
     ax.set_xlabel("Model")
     ax.set_ylabel("Kappa")
-    fig.savefig("visualization/out/applicability_domain_kappa.png", bbox_inches="tight")
+    fig.savefig(f"visualization/out/applicability_domain-{APPLICABILITY_DOMAIN_TYPE}-kappa.png", bbox_inches="tight")
 
 
 def main():
     METRIC = "kappa"
     performance_summaries = []
+
+    directory = Path("top_models/applicability_domain") / APPLICABILITY_DOMAIN_TYPE
+    directory.mkdir(parents=True, exist_ok=True)
+
     for _, dataset, distance_threshold in datasets[
         ["DATASET", "DISTANCE_THRESHOLD"]
     ].itertuples():
-        evaluation = get_metrics_for_dataset(dataset, distance_threshold)
-        evaluation.to_csv(
-            f"top_models/applicability_domain/applicability_domain_metrics.{dataset}.csv"
+        evaluation = get_metrics_for_dataset(
+            dataset, distance_threshold, APPLICABILITY_DOMAIN_TYPE
         )
+        evaluation.to_csv(directory / f"applicability_domain_metrics.{dataset}.csv")
 
         kappa = evaluation.loc[METRIC].unstack().T
         kappa.columns = pd.MultiIndex.from_product([[dataset], kappa.columns])  # type: ignore
@@ -261,7 +313,7 @@ def main():
 
     performance_summary = pd.concat(performance_summaries, axis=1)
     performance_summary.T.to_csv(
-        f"top_models/applicability_domain/applicability_domain_{METRIC}_summary.csv"
+        directory / f"applicability_domain_{METRIC}_summary.csv"
     )
 
     make_applicability_domain_performance_plot(performance_summary)
