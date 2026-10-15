@@ -18,11 +18,6 @@ output/*
 !output/vnn
 !output/autoadmet_pipeline
 
-output/autoadmet_pipeline/*/*/*
-!output/autoadmet_pipeline/*/*/*_metadata.json
-!output/autoadmet_pipeline/*/*/*_metrics.csv
-!output/autoadmet_pipeline/*/*/*_model.pkl
-!output/autoadmet_pipeline/*/*/*_scaler.pkl
-!output/autoadmet_pipeline/*/cv_results/*
-
-descriptor_cache
+output/autoadmet_pipeline/*/*/descriptor_cache/*
+!output/autoadmet_pipeline/*/*/descriptor_cache/mordred_columns.csv
+output/autoadmet_pipeline/*/*/stacking_ensemble_top5.pkl
