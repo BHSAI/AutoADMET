@@ -21,6 +21,7 @@ output/*
 output/autogluon/models
 !output/flaml
 output/flaml/models
+!output/pairwise_comparisons
 
 output/autoadmet_pipeline/*/*/descriptor_cache/*
 !output/autoadmet_pipeline/*/*/descriptor_cache/mordred_columns.csv

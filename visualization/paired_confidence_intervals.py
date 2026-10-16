@@ -97,16 +97,6 @@ def kappa_difference(
 
 
 def main():
-    # x = {
-    #     "autogluon-morgan_fp": {
-    #         ("autogluon-mordred_desc", "lower"): 1,
-    #         ("autogluon-mordred_desc", "mean"): 2,
-    #         ("autogluon-mordred_desc", "upper"): 3,
-    #         ("flaml-mordred_desc", "lower"): 1,
-    #         ("flaml-mordred_desc", "mean"): 2,
-    #         ("flaml-mordred_desc", "upper"): 3,
-    #     }
-    # }
     out_dir = Path("output/pairwise_comparisons")
     out_dir.mkdir(exist_ok=True, parents=True)
 
