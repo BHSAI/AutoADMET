@@ -15,7 +15,7 @@ from pathlib import Path
 from confidenceinterval import bootstrap
 import argparse
 
-DATASETS = pd.read_csv(Path(__file__).parent / "data" / "dataset_config.csv")[
+DATASETS = pd.read_csv(Path(__file__).parents[1] / "data" / "dataset_config.csv")[
     "DATASET"
 ].to_list()
 FEATURIZATIONS = [
@@ -35,7 +35,7 @@ EXTRA_METRICS = [
 def load_data(
     dataset: str,
     featurization: str,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     """
     Load in the preprocessed compound data for the specified dataset and featurization.
 
@@ -51,18 +51,20 @@ def load_data(
     train = pd.read_csv(train_csv)
     test = pd.read_csv(test_csv)
 
+    train_smiles = train["SMILES"]
+    test_smiles = test["SMILES"]
     feature_cols = [col for col in train.columns if "FEATURE_" in col]
     train = train[[CLASS_COL, *feature_cols]]
     test = test[[CLASS_COL, *feature_cols]]
 
-    return train, test
+    return train, test, train_smiles, test_smiles
 
 
 def get_fitted_predictor(
     train: pd.DataFrame,
     featurization: str,
-    predictor_file: str,
-    train_time_file: str,
+    predictor_file: str | Path,
+    train_time_file: str | Path,
     use_prefit: bool,
 ) -> tuple[TabularPredictor, float]:
     """
@@ -115,7 +117,7 @@ def get_fitted_predictor(
         search_start = time.perf_counter()
         predictor = TabularPredictor(
             label=CLASS_COL,
-            path=predictor_file,
+            path=str(predictor_file),
             eval_metric=EVAL_METRIC,
             log_to_file=True,
         ).fit(
@@ -133,7 +135,7 @@ def get_fitted_predictor(
         with open(train_time_file, "w") as file:
             file.write(str(train_time))
     else:
-        predictor = TabularPredictor.load(predictor_file)
+        predictor = TabularPredictor.load(str(predictor_file))
         with open(train_time_file, "r") as file:
             train_time = float(file.read())
 
@@ -177,8 +179,8 @@ def conf_interval_dict(
 def save_leaderboards(
     predictor: TabularPredictor,
     test: pd.DataFrame,
-    leaderboard_file: str,
-    top_ensemble_leaderboard_file: str,
+    leaderboard_file: str | Path,
+    top_ensemble_leaderboard_file: str | Path,
 ):
     """
     Save leaderboards for the test performance of the trained models.
@@ -224,8 +226,10 @@ def save_leaderboards(
 def save_top_model_metrics(
     predictor: TabularPredictor,
     train_time: float,
+    test_smiles: pd.Series,
     test: pd.DataFrame,
-    top_performing_metrics_file: str,
+    top_performing_metrics_file: str | Path,
+    predictions_file: str | Path,
 ):
     """
     Save the metrics we are interested in to a CSV file for the top performing model.
@@ -235,11 +239,13 @@ def save_top_model_metrics(
         predictor (TabularPredictor): The model to evaluate.
         test (pd.DataFrame): The test data to evaluate the predictor on.
         top_performing_metrics_file (str): The path for the file to save the metrics to.
+        predictions_file (str): The path for the file to save the predictions to.
     """
     y_test = test[CLASS_COL].to_numpy()
     start = time.perf_counter()
     y_pred: np.ndarray = predictor.predict(test)  # type: ignore
     pred_time = time.perf_counter() - start
+    y_pred_proba = predictor.predict_proba(test)
 
     performance = {
         **conf_interval_dict(y_test, y_pred, "kappa", metrics.cohen_kappa_score),
@@ -255,38 +261,50 @@ def save_top_model_metrics(
         "pred_time": pred_time,
     }
     pd.DataFrame([performance]).to_csv(top_performing_metrics_file, index=False)
+    pd.DataFrame.from_dict(
+        {
+            "SMILES": test_smiles,
+            "True_Label": test[CLASS_COL],
+            "Predicted_Label": y_pred,
+            "Predicted_Probability": y_pred_proba[1],
+        }
+    ).to_csv(predictions_file, index=False)
 
 
-def main(use_prefit: bool):
+def main(mode: str, datasets: list[str]):
     logger = logging.getLogger(__name__)
     logging.basicConfig(level=logging.INFO)
     logger.info("Starting")
-    for dataset, featurization in it.product(DATASETS, FEATURIZATIONS):
+
+    leaderboard_dir = Path("output/autogluon/leaderboards")
+    predictions_dir = Path("output/autogluon/predictions")
+    models_dir = Path("output/autogluon/models")
+    top_models_dir = Path("top_models/autogluon")
+
+    for dir in [leaderboard_dir, predictions_dir, models_dir, top_models_dir]:
+        dir.mkdir(exist_ok=True, parents=True)
+
+    for dataset, featurization in it.product(datasets, FEATURIZATIONS):
         logger.info(f"Working on {dataset} {featurization} data")
 
         # Load data
         logger.info(f"{dataset} {featurization} - Loading in preprocessed data")
-        train, test = load_data(dataset, featurization)
+        train, test, _, test_smiles = load_data(dataset, featurization)
 
         # Get filenames
         time_limit_str = (
             f"{TIME_LIMIT}min" if TIME_LIMIT is not None else "no_time_limit"
         )
         config_id_str = f"{dataset}.{featurization}.{EVAL_METRIC}.{time_limit_str}"
-        leaderboard_file = (
-            f"output/autogluon/leaderboards/leaderboard.{config_id_str}.csv"
+
+        leaderboard_file = leaderboard_dir / f"leaderboard.{config_id_str}.csv"
+        train_time_file = leaderboard_dir / f"train_time.{config_id_str}.txt"
+        top_ensemble_leaderboard_file = (
+            leaderboard_dir / f"leaderboard.{config_id_str}.top_ensemble.csv"
         )
-        train_time_file = (
-            f"output/autogluon/leaderboards/train_time.{config_id_str}.txt"
-        )
-        top_ensemble_leaderboard_file = f"output/autogluon/leaderboards/leaderboard.{config_id_str}.top_ensemble.csv"
-        predictor_file = f"output/autogluon/models/model.{config_id_str}"
-        top_performing_metrics_file = (
-            f"top_models/autogluon/top_model.{config_id_str}.csv"
-        )
-        for directory in ["leaderboards", "models"]:
-            Path(f"output/autogluon/{directory}").mkdir(exist_ok=True, parents=True)
-        Path(f"top_models/autogluon").mkdir(exist_ok=True, parents=True)
+        predictor_file = models_dir / f"model.{config_id_str}"
+        top_performing_metrics_file = top_models_dir / f"top_model.{config_id_str}.csv"
+        predictions_file = predictions_dir / f"predictions.{config_id_str}.csv"
 
         logger.info(f"{dataset} {featurization} - Fitting AutoGluon predictor")
         predictor, train_time = get_fitted_predictor(
@@ -294,16 +312,17 @@ def main(use_prefit: bool):
             featurization,
             predictor_file,
             train_time_file,
-            use_prefit,
+            mode != "full",
         )
 
-        logger.info(f"{dataset} {featurization} - Saving leaderboards")
-        save_leaderboards(
-            predictor,
-            test,
-            leaderboard_file,
-            top_ensemble_leaderboard_file,
-        )
+        if mode != "evaluate-only":
+            logger.info(f"{dataset} {featurization} - Saving leaderboards")
+            save_leaderboards(
+                predictor,
+                test,
+                leaderboard_file,
+                top_ensemble_leaderboard_file,
+            )
 
         # Get performance metrics for the top model
         logger.info(
@@ -312,18 +331,32 @@ def main(use_prefit: bool):
         save_top_model_metrics(
             predictor,
             train_time,
+            test_smiles,
             test,
             top_performing_metrics_file,
+            predictions_file,
         )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--use_prefit",
-        action="store_true",
+        "--mode",
+        choices=["full", "skip-fit", "evaluate-only"],
+        default="full",
         help="Set this flag to skip training when regenerating performance data.",
+    )
+
+    parser.add_argument(
+        "--datasets_start",
+        default=0,
+        help="The index of the first dataset to process.",
+    )
+    parser.add_argument(
+        "--datasets_end",
+        default=len(DATASETS),
+        help="The index of the last dataset to process.",
     )
     args = parser.parse_args()
 
-    main(args.use_prefit)
+    main(args.mode, DATASETS[args.datasets_start : args.datasets_end])

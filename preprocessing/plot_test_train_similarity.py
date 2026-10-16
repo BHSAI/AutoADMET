@@ -8,7 +8,7 @@ from scipy.sparse import coo_array
 
 import vnn.variable_nearest_neighbor as vnn_lib
 
-datasets = pd.read_csv(Path(__file__).parent.parent / "data" / "dataset_config.csv")
+datasets = pd.read_csv(Path(__file__).parents[1] / "data" / "dataset_config.csv")
 
 
 def plot_train_test_similarity(

@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 import argparse
 from sklearn.model_selection import RepeatedStratifiedKFold
 
-DATASETS = pd.read_csv(Path(__file__).parent / "data" / "dataset_config.csv")[
+DATASETS = pd.read_csv(Path(__file__).parents[1] / "data" / "dataset_config.csv")[
     "DATASET"
 ].to_list()
 FEATURIZATIONS = [
@@ -49,7 +49,14 @@ def cohen_kappa(
 def load_data(
     dataset: str,
     featurization: str,
-) -> tuple[pd.DataFrame, np.ndarray, pd.DataFrame, np.ndarray]:
+) -> tuple[
+    pd.DataFrame,
+    np.ndarray,
+    pd.DataFrame,
+    np.ndarray,
+    pd.Series,
+    pd.Series,
+]:
     """
     Load in the preprocessed compound data for the specified dataset and featurization.
 
@@ -82,16 +89,16 @@ def load_data(
         X_train[X_train.columns] = scaler.transform(X_train)
         X_test[X_test.columns] = scaler.transform(X_test)
 
-    return X_train, y_train, X_test, y_test
+    return X_train, y_train, X_test, y_test, train["SMILES"], test["SMILES"]
 
 
 def get_fitted_automl(
     X_train: pd.DataFrame,
     y_train: np.ndarray,
     featurization: str,
-    log_file: str,
-    pkl_file: str,
-    train_time_file: str,
+    log_file: str | Path,
+    pkl_file: str | Path,
+    train_time_file: str | Path,
     use_prefit: bool,
 ) -> tuple[AutoML, float]:
     """
@@ -196,9 +203,11 @@ def conf_interval_dict(
 def save_top_model_metrics(
     automl: AutoML,
     train_time: float,
+    test_smiles: pd.Series,
     X_test: pd.DataFrame,
     y_test: np.ndarray,
-    top_performing_metrics_file: str,
+    top_performing_metrics_file: str | Path,
+    predictions_file: str | Path,
 ):
     """
     Save the metrics we are interested in to a CSV file for the top performing model.
@@ -213,6 +222,7 @@ def save_top_model_metrics(
     start = time.perf_counter()
     y_pred: np.ndarray = automl.predict(X_test)  # type: ignore
     pred_time = time.perf_counter() - start
+    y_pred_proba: np.ndarray = automl.predict_proba(X_test)  # type: ignore
 
     performance = {
         **conf_interval_dict(y_test, y_pred, "kappa", metrics.cohen_kappa_score),
@@ -228,9 +238,17 @@ def save_top_model_metrics(
         "pred_time": pred_time,
     }
     pd.DataFrame([performance]).to_csv(top_performing_metrics_file, index=False)
+    pd.DataFrame.from_dict(
+        {
+            "SMILES": test_smiles,
+            "True_Label": y_test,
+            "Predicted_Label": y_pred,
+            "Predicted_Probability": y_pred_proba[:, 1],
+        }
+    ).to_csv(predictions_file, index=False)
 
 
-def save_fit_history_plot(log_file: str, plot_file: str):
+def save_fit_history_plot(log_file: str | Path, plot_file: str | Path):
     """
     Save a performance-by-time plot visualizing the fit history as captured in the log file.
 
@@ -294,28 +312,37 @@ def save_fit_history_plot(log_file: str, plot_file: str):
     plt.savefig(plot_file)
 
 
-def main(use_prefit: bool):
+def main(use_prefit: bool, datasets: list[str]):
     logger = logging.getLogger(__name__)
     logging.basicConfig(level=logging.INFO)
     logger.info("Starting")
 
-    for dataset, featurization in it.product(DATASETS, FEATURIZATIONS):
+    logs_dir = Path("output/flaml/logs")
+    predictions_dir = Path("output/flaml/predictions")
+    models_dir = Path("output/flaml/models")
+    plots_dir = Path("output/flaml/plots")
+    top_models_dir = Path("top_models/flaml")
+
+    for dir in [logs_dir, predictions_dir, models_dir, plots_dir, top_models_dir]:
+        dir.mkdir(exist_ok=True, parents=True)
+
+    for dataset, featurization in it.product(datasets, FEATURIZATIONS):
         logger.info(f"Working on {dataset} {featurization} data")
 
         # Load data
         logger.info(f"{dataset} {featurization} - Loading in preprocessed data")
-        X_train, y_train, X_test, y_test = load_data(dataset, featurization)
+        X_train, y_train, X_test, y_test, _, test_smiles = load_data(
+            dataset, featurization
+        )
 
         # Get filenames
         config_id_str = f"{dataset}.{featurization}.{TIME_LIMIT}min"
-        log_file = f"output/flaml/logs/{config_id_str}.log"
-        train_time_file = f"output/flaml/logs/train_time.{config_id_str}.txt"
-        pkl_file = f"output/flaml/models/model.{config_id_str}.pkl"
-        top_performing_metrics_file = f"top_models/flaml/top_model.{config_id_str}.csv"
-        plot_file = f"output/flaml/plots/plot.{config_id_str}.png"
-        for directory in ["logs", "models", "plots"]:
-            Path(f"output/flaml/{directory}").mkdir(exist_ok=True, parents=True)
-        Path(f"top_models/flaml").mkdir(exist_ok=True, parents=True)
+        log_file = logs_dir / f"{config_id_str}.log"
+        train_time_file = logs_dir / f"train_time.{config_id_str}.txt"
+        pkl_file = models_dir / f"model.{config_id_str}.pkl"
+        top_performing_metrics_file = top_models_dir / f"top_model.{config_id_str}.csv"
+        predictions_file = predictions_dir / f"predictions.{config_id_str}.csv"
+        plot_file = plots_dir / f"plot.{config_id_str}.png"
 
         # Fit the automl object
         logger.info(f"{dataset} {featurization} - Fitting the FLAML automl object")
@@ -336,9 +363,11 @@ def main(use_prefit: bool):
         save_top_model_metrics(
             automl,
             train_time,
+            test_smiles,
             X_test,
             y_test,
             top_performing_metrics_file,
+            predictions_file,
         )
 
         # Make training history plot
@@ -355,6 +384,16 @@ if __name__ == "__main__":
         action="store_true",
         help="Set this flag to skip training when regenerating performance data.",
     )
+    parser.add_argument(
+        "--datasets_start",
+        default=0,
+        help="The index of the first dataset to process.",
+    )
+    parser.add_argument(
+        "--datasets_end",
+        default=len(DATASETS),
+        help="The index of the last dataset to process.",
+    )
     args = parser.parse_args()
 
-    main(args.use_prefit)
+    main(args.use_prefit, DATASETS[args.datasets_start : args.datasets_end])

@@ -13,7 +13,9 @@ from vnn.variable_nearest_neighbor import VariableNearestNeighborsClassifier
 from scipy.sparse import coo_array
 import argparse
 
-datasets = pd.read_csv(Path(__file__).parent / "data" / "dataset_config.csv")["DATASET"]
+DATASETS = pd.read_csv(Path(__file__).parents[2] / "data" / "dataset_config.csv")[
+    "DATASET"
+]
 FEATURIZATIONS = ["morgan_fp"]
 CLASS_COL = "CLASS"
 
@@ -21,7 +23,7 @@ CLASS_COL = "CLASS"
 def load_data(
     dataset: str,
     featurization: str,
-) -> tuple[pd.DataFrame, np.ndarray, pd.DataFrame, np.ndarray]:
+) -> tuple[pd.DataFrame, np.ndarray, pd.DataFrame, np.ndarray, pd.Series, pd.Series]:
     train_csv = f"data/preprocessed/{dataset}/{featurization}.train.csv"
     test_csv = f"data/preprocessed/{dataset}/{featurization}.test.csv"
     train = pd.read_csv(train_csv)
@@ -35,7 +37,7 @@ def load_data(
     X_test = test[feature_cols].copy()
     y_test = test[CLASS_COL].to_numpy()
 
-    return X_train, y_train, X_test, y_test
+    return X_train, y_train, X_test, y_test, train["SMILES"], test["SMILES"]
 
 
 def load_time_benchmark_data(featurization: str) -> dict[str, pd.DataFrame]:
@@ -92,11 +94,12 @@ def save_top_model_metrics(
     train_time: float,
     X_train: pd.DataFrame,
     y_train: np.ndarray,
+    test_smiles: pd.Series,
     X_test: pd.DataFrame,
     y_test: np.ndarray,
-    top_performing_metrics_file: str,
+    top_performing_metrics_file: str | Path,
     time_benchmark_test_sets: dict[str, pd.DataFrame],
-    pred_file: str,
+    predictions_file: str | Path,
 ):
     best_model_config = grid_search_results.iloc[0]
     best_model = VariableNearestNeighborsClassifier(
@@ -105,7 +108,7 @@ def save_top_model_metrics(
     best_model.fit(X_train, y_train)
 
     y_pred, test_pred_time, test_pred_time_norm = predict_test_set(best_model, X_test)
-    np.save(pred_file, y_pred)
+    y_pred_proba = best_model.predict_proba(X_test)
 
     extra_time_benchmarks = {
         f"pred_time_{key}_normalized": predict_test_set(best_model, test_set)[2]
@@ -130,6 +133,14 @@ def save_top_model_metrics(
         **extra_time_benchmarks,
     }
     pd.DataFrame([performance]).to_csv(top_performing_metrics_file, index=False)
+    pd.DataFrame.from_dict(
+        {
+            "SMILES": test_smiles,
+            "True_Label": y_test,
+            "Predicted_Label": y_pred,
+            "Predicted_Probability": y_pred_proba,
+        }
+    ).to_csv(predictions_file, index=False)
 
 
 def main(use_prefit: bool):
@@ -137,28 +148,33 @@ def main(use_prefit: bool):
     logging.basicConfig(level=logging.INFO)
     logger.info("Starting")
 
-    for dataset, featurization in it.product(
-        datasets["DATASET"], FEATURIZATIONS
-    ):
+    leaderboards_dir = Path("output/vnn/leaderboards")
+    predictions_dir = Path("output/vnn/predictions")
+    plots_dir = Path("output/vnn/plots")
+    top_models_dir = Path("top_models/vnn")
+
+    for dir in [leaderboards_dir, predictions_dir, plots_dir, top_models_dir]:
+        dir.mkdir(exist_ok=True, parents=True)
+
+    for dataset, featurization in it.product(DATASETS, FEATURIZATIONS):
         logger.info(f"Working on {dataset} {featurization} data")
 
         # Load data
         logger.info(f"{dataset} {featurization} - Loading in preprocessed data")
-        X_train, y_train, X_test, y_test = load_data(dataset, featurization)
+        X_train, y_train, X_test, y_test, _, test_smiles = load_data(
+            dataset, featurization
+        )
 
         # Get filenames
         config_id_str = f"{dataset}.{featurization}"
-        leaderboard_file = f"output/vnn/leaderboards/leaderboard.{config_id_str}.csv"
+        leaderboard_file = leaderboards_dir / f"leaderboard.{config_id_str}.csv"
         per_fold_leaderboard_file = (
-            f"output/vnn/leaderboards/leaderboard-per_forld.{config_id_str}.csv"
+            leaderboards_dir / f"leaderboard-per_forld.{config_id_str}.csv"
         )
-        train_time_file = f"output/vnn/leaderboards/train_time.{config_id_str}.txt"
-        plot_file = f"output/vnn/plots/plot.{config_id_str}.png"
-        top_performing_metrics_file = f"top_models/vnn/top_model.{config_id_str}.csv"
-        pred_file = f"top_models/vnn/y_pred.{dataset}"
-        for directory in ["leaderboards", "plots", "top_models"]:
-            Path(f"output/vnn/{directory}").mkdir(exist_ok=True, parents=True)
-        Path(f"top_models/vnn").mkdir(exist_ok=True, parents=True)
+        train_time_file = leaderboards_dir / f"train_time.{config_id_str}.txt"
+        plot_file = plots_dir / f"plot.{config_id_str}.png"
+        top_performing_metrics_file = top_models_dir / f"top_model.{config_id_str}.csv"
+        pred_file = predictions_dir / f"predictions.{dataset}.csv"
 
         # Fit the vnn model
         logger.info(f"{dataset} {featurization} - Hyperparameter optimizing vNN")
@@ -216,11 +232,12 @@ def main(use_prefit: bool):
             train_time,
             X_train,
             y_train,
+            test_smiles,
             X_test,
             y_test,
             top_performing_metrics_file,
             time_benchmark_test_sets,
-            pred_file=pred_file,
+            predictions_file=pred_file,
         )
 
 

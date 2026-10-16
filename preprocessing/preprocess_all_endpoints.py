@@ -3,7 +3,7 @@ from pathlib import Path
 import preprocess_compounds
 import pandas as pd
 
-datasets = pd.read_csv(Path(__file__).parent / "data" / "dataset_config.csv")[
+datasets = pd.read_csv(Path(__file__).parents[1] / "data" / "dataset_config.csv")[
     "DATASET"
 ].to_list()
 

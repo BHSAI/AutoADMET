@@ -11,7 +11,7 @@ from pathlib import Path
 from collections import defaultdict
 import adjustText
 
-datasets = pd.read_csv(Path(__file__).parent.parent / "data" / "dataset_config.csv")
+datasets = pd.read_csv(Path(__file__).parents[1] / "data" / "dataset_config.csv")
 datasets = datasets.sort_values("FULL_SIZE").reset_index(drop=True)
 
 USE_EXTRA_FRAMEWORKS = False

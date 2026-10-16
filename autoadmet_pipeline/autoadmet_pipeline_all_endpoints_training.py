@@ -11,7 +11,7 @@ import subprocess
 
 PIPELINE_REPO_PATH = "./bcrp_classify"
 
-datasets = pd.read_csv(Path(__file__).parent / "data" / "dataset_config.csv")[
+datasets = pd.read_csv(Path(__file__).parents[1] / "data" / "dataset_config.csv")[
     "DATASET"
 ].to_list()
 CLASS_COL = "CLASS"
@@ -183,7 +183,7 @@ def save_top_model_metrics(
     pd.DataFrame(performance).to_csv(top_performing_metrics_file, index=False)
 
 
-def main(mode: str, pipeline_repo_path: str):
+def main(mode: str, pipeline_repo_path: str, datasets: list[str]):
     logger = logging.getLogger(__name__)
     logging.basicConfig(level=logging.INFO)
     logger.info("Starting")
@@ -282,6 +282,20 @@ if __name__ == "__main__":
         default=PIPELINE_REPO_PATH,
         help="The path to the AutoADMET pipeline repository.",
     )
+    parser.add_argument(
+        "--datasets_start",
+        default=0,
+        help="The index of the first dataset to process.",
+    )
+    parser.add_argument(
+        "--datasets_end",
+        default=len(datasets),
+        help="The index of the last dataset to process.",
+    )
     args = parser.parse_args()
 
-    main(args.mode, args.pipeline_repo_path)
+    main(
+        args.mode,
+        args.pipeline_repo_path,
+        datasets[args.datasets_start : args.datasets_end],
+    )

@@ -4,7 +4,7 @@ import pandas as pd
 import math
 
 FEATURIZATIONS = ["morgan_fp", "mordred_desc", "canonical_smiles"]
-datasets = pd.read_csv(Path(__file__).parent / "data" / "dataset_config.csv")[
+datasets = pd.read_csv(Path(__file__).parents[1] / "data" / "dataset_config.csv")[
     "DATASET"
 ].to_list()
 SEED = 1031

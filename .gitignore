@@ -17,6 +17,10 @@ out-*
 output/*
 !output/vnn
 !output/autoadmet_pipeline
+!output/autogluon
+output/autogluon/models
+!output/flaml
+output/flaml/models
 
 output/autoadmet_pipeline/*/*/descriptor_cache/*
 !output/autoadmet_pipeline/*/*/descriptor_cache/mordred_columns.csv
