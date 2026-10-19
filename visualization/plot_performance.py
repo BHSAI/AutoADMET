@@ -25,7 +25,7 @@ else:
     FIGSIZE = (12, 6)
 
 TICK_WIDTH = 0.08
-METRICS = ["kappa", "accuracy", "recall", "specificity"]
+METRICS = ["kappa", "accuracy", "sensitivity", "specificity", "rocauc"]
 
 FEATURIZATIONS = ["morgan_fp", "mordred_desc"]
 

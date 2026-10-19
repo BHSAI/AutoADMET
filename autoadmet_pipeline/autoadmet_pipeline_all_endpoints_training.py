@@ -64,11 +64,12 @@ def test_performance_conf_intervals(
         **conf_interval_dict(y_test, y_pred, "kappa", metrics.cohen_kappa_score),
         **conf_interval_dict(y_test, y_pred, "accuracy", metrics.accuracy_score),
         **conf_interval_dict(
-            y_test, y_pred, "recall", metrics.recall_score, pos_label=1
+            y_test, y_pred, "sensitivity", metrics.recall_score, pos_label=1
         ),
         **conf_interval_dict(
             y_test, y_pred, "specificity", metrics.recall_score, pos_label=0
         ),
+        **conf_interval_dict(y_test, y_pred, "rocauc", metrics.roc_auc_score),
     }
 
 

@@ -121,11 +121,12 @@ def save_top_model_metrics(
         **conf_interval_dict(y_test, y_pred, "kappa", metrics.cohen_kappa_score),
         **conf_interval_dict(y_test, y_pred, "accuracy", metrics.accuracy_score),
         **conf_interval_dict(
-            y_test, y_pred, "recall", metrics.recall_score, pos_label=1
+            y_test, y_pred, "sensitivity", metrics.recall_score, pos_label=1
         ),
         **conf_interval_dict(
             y_test, y_pred, "specificity", metrics.recall_score, pos_label=0
         ),
+        **conf_interval_dict(y_test, y_pred, "rocauc", metrics.roc_auc_score),
         "kappa_val": grid_search_results.iloc[0]["kappa"],
         "train_time": train_time,
         "pred_time": test_pred_time,

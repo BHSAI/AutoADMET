@@ -431,7 +431,6 @@ def plot_combined_cd(df, metrics, save_path):
         pc = sp.posthoc_conover_friedman(df_wide, p_adjust="holm")
         font_size = 16
         sp.critical_difference_diagram(avg_rank, pc, ax=axes[i], label_props={"size": font_size})
-        axes[i].set_title(metric_display, size=font_size)
         axes[i].tick_params(labelsize=font_size)
 
     plt.tight_layout()
