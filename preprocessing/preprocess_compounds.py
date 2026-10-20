@@ -1,7 +1,9 @@
+import argparse
+import time
+from pathlib import Path
+
 import pandas as pd
 from rdkit import Chem
-from pathlib import Path
-import argparse
 
 from trpv1_utils import (
     fingerprints,
@@ -61,15 +63,13 @@ featurizers = {
 }
 
 
-def preprocess_compounds(
-    raw_data_csv: str,
-    output_dir: str,
-    training_data: bool = True,
+def clean_compound_data(
+    df: pd.DataFrame,
     smiles_col: str = COL_SMILES,
     class_col: str = COL_CLASS,
-    featurization: str = MORGAN_FP_KEY,
-) -> None:
-    df = pd.read_csv(raw_data_csv)
+    training_data: bool = True,
+) -> tuple[pd.DataFrame, float]:
+    start = time.perf_counter()
 
     # Standardize column names
     df.rename({smiles_col: COL_SMILES}, axis=1, inplace=True)
@@ -88,33 +88,96 @@ def preprocess_compounds(
         print(f"Size before: {df.shape[0]}. Size after: {dedup_df.shape[0]}")
         df = dedup_df
 
+    cleaning_time = time.perf_counter() - start
+
+    return df, cleaning_time
+
+
+def split_data(df: pd.DataFrame) -> tuple[list[int], list[int]]:
+    # Perform scaffold split
+    train_idx, test_idx = scaffold_utils.scaffold_split(df[COL_CANONICAL_SMILES])
+    train_compounds = df.iloc[train_idx]
+    test_compounds = df.iloc[test_idx]
+
+    # Validate split
+    scaffold_utils.validate_split(
+        train_compounds,
+        test_compounds,
+        label_col=COL_CLASS,
+    )
+
+    return train_idx, test_idx
+
+
+def generate_descriptors(
+    df: pd.DataFrame,
+    featurization: str,
+) -> tuple[pd.DataFrame, float]:
     # Generate fingerprints
+    start = time.perf_counter()
     df = featurizers[featurization](df)
+    featurization_time = time.perf_counter() - start
 
-    # Save featurized data
-    Path(output_dir).mkdir(exist_ok=True, parents=True)
-    df.to_csv(f"{output_dir}/{featurization}.all.csv", index=False)
-    df[["Name", "CANONICAL_SMILES", "CLASS"]].to_csv(f"{output_dir}/canonical_smiles.all.csv", index=False)
+    return df, featurization_time
 
-    # Perform and save scaffold split
+
+def preprocess_compounds(
+    raw_data_csv: str,
+    output_dir: str,
+    training_data: bool = True,
+    smiles_col: str = COL_SMILES,
+    class_col: str = COL_CLASS,
+    featurizations: list[str] = [MORGAN_FP_KEY],
+) -> tuple[dict[str, pd.DataFrame], float, dict[str, float]]:
+    df = pd.read_csv(raw_data_csv)
+
+    df, cleaning_time = clean_compound_data(df, smiles_col, class_col, training_data)
+
+    # Save canonicalized data
+    df[["Name", "SMILES", "CANONICAL_SMILES", "CLASS"]].to_csv(
+        f"{output_dir}/canonical_smiles.all.csv", index=False
+    )
     if training_data:
-        # Perform scaffold split
-        train_idx, test_idx = scaffold_utils.scaffold_split(df[COL_CANONICAL_SMILES])
-        train_compounds = df.iloc[train_idx]
-        test_compounds = df.iloc[test_idx]
-
-        # Validate split
-        scaffold_utils.validate_split(
-            train_compounds,
-            test_compounds,
-            label_col=COL_CLASS,
+        # Split data and save canonicalized splits
+        train_idx, test_idx = split_data(df)
+        df.iloc[train_idx][["Name", "SMILES", "CANONICAL_SMILES", "CLASS"]].to_csv(
+            f"{output_dir}/canonical_smiles.train.csv", index=False
+        )
+        df.iloc[test_idx][["Name", "SMILES", "CANONICAL_SMILES", "CLASS"]].to_csv(
+            f"{output_dir}/canonical_smiles.test.csv", index=False
         )
 
-        # Save split dataframes
-        train_compounds.to_csv(f"{output_dir}/{featurization}.train.csv", index=False)
-        train_compounds[["Name", "CANONICAL_SMILES", "CLASS"]].to_csv(f"{output_dir}/canonical_smiles.train.csv", index=False)
-        test_compounds.to_csv(f"{output_dir}/{featurization}.test.csv", index=False)
-        test_compounds[["Name", "CANONICAL_SMILES", "CLASS"]].to_csv(f"{output_dir}/canonical_smiles.test.csv", index=False)
+    featurized_dfs = {}
+    featurization_times = {}
+
+    for featurization in featurizations:
+        # Generate fingerprints
+        start = time.perf_counter()
+        featurized_df = featurizers[featurization](df)
+        featurization_time = time.perf_counter() - start
+
+        # Save featurized data
+        Path(output_dir).mkdir(exist_ok=True, parents=True)
+        featurized_df.to_csv(f"{output_dir}/{featurization}.all.csv", index=False)
+
+        # Perform and save scaffold split
+        if training_data:
+            # Save split dataframes
+            train_compounds = featurized_df.iloc[train_idx]
+            test_compounds = featurized_df.iloc[test_idx]
+            train_compounds.to_csv(
+                f"{output_dir}/{featurization}.train.csv",
+                index=False,
+            )
+            test_compounds.to_csv(
+                f"{output_dir}/{featurization}.test.csv",
+                index=False,
+            )
+
+        featurized_dfs[featurization] = featurized_df
+        featurization_times[featurization] = featurization_time
+
+    return featurized_dfs, cleaning_time, featurization_times
 
 
 def _parse_arguments() -> argparse.Namespace:
@@ -170,7 +233,7 @@ def main() -> None:
         training_data=not args.query_data,
         smiles_col=args.smiles_col,
         class_col=args.class_col,
-        featurization=args.featurization,
+        featurizations=[args.featurization],
     )
 
 

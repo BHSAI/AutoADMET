@@ -15,7 +15,7 @@ import argparse
 
 DATASETS = pd.read_csv(Path(__file__).parents[2] / "data" / "dataset_config.csv")[
     "DATASET"
-]
+].to_list()
 FEATURIZATIONS = ["morgan_fp"]
 CLASS_COL = "CLASS"
 
@@ -103,7 +103,8 @@ def save_top_model_metrics(
 ):
     best_model_config = grid_search_results.iloc[0]
     best_model = VariableNearestNeighborsClassifier(
-        best_model_config["SmoothFactor"], best_model_config["TanimotoDistance"]
+        best_model_config["SmoothFactor"],
+        best_model_config["TanimotoDistance"],
     )
     best_model.fit(X_train, y_train)
 
@@ -144,7 +145,7 @@ def save_top_model_metrics(
     ).to_csv(predictions_file, index=False)
 
 
-def main(use_prefit: bool):
+def main(use_prefit: bool, datasets: list[str]):
     logger = logging.getLogger(__name__)
     logging.basicConfig(level=logging.INFO)
     logger.info("Starting")
@@ -157,7 +158,7 @@ def main(use_prefit: bool):
     for dir in [leaderboards_dir, predictions_dir, plots_dir, top_models_dir]:
         dir.mkdir(exist_ok=True, parents=True)
 
-    for dataset, featurization in it.product(DATASETS, FEATURIZATIONS):
+    for dataset, featurization in it.product(datasets, FEATURIZATIONS):
         logger.info(f"Working on {dataset} {featurization} data")
 
         # Load data
@@ -193,7 +194,7 @@ def main(use_prefit: bool):
             )
             grid_search_results = grid_search_results.sort_values(
                 "kappa", ascending=False
-            )
+            ).reset_index(drop=True)
             grid_search_results.to_csv(leaderboard_file, index=False)
 
             per_fold_results.to_csv(per_fold_leaderboard_file, index=False)
@@ -203,7 +204,7 @@ def main(use_prefit: bool):
         else:
             grid_search_results = pd.read_csv(leaderboard_file).sort_values(
                 "kappa", ascending=False
-            )
+            ).reset_index(drop=True)
             with open(train_time_file, "r") as file:
                 train_time = float(file.read())
 
@@ -216,9 +217,9 @@ def main(use_prefit: bool):
             x="SmoothFactor",
         )
         ax.axvline(
-            grid_search_results.sort_values("kappa", ascending=False)["SmoothFactor"][
-                0
-            ],
+            grid_search_results.sort_values("kappa", ascending=False)
+            .reset_index(drop=True)["SmoothFactor"]
+            .iloc[0],
             c="red",
         )
         ax.figure.savefig(plot_file)  # type: ignore
@@ -249,6 +250,18 @@ if __name__ == "__main__":
         action="store_true",
         help="Set this flag to skip training when regenerating performance data.",
     )
+    parser.add_argument(
+        "--datasets_start",
+        type=int,
+        default=None,
+        help="The index of the first dataset to process.",
+    )
+    parser.add_argument(
+        "--datasets_end",
+        type=int,
+        default=None,
+        help="The index of the last dataset to process.",
+    )
     args = parser.parse_args()
 
-    main(args.use_prefit)
+    main(args.use_prefit, DATASETS[args.datasets_start : args.datasets_end])

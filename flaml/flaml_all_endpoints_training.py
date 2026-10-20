@@ -387,12 +387,14 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--datasets_start",
-        default=0,
+        type=int,
+        default=None,
         help="The index of the first dataset to process.",
     )
     parser.add_argument(
         "--datasets_end",
-        default=len(DATASETS),
+        type=int,
+        default=None,
         help="The index of the last dataset to process.",
     )
     args = parser.parse_args()
