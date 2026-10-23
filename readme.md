@@ -64,6 +64,13 @@ To preprocess the raw data, run the following:
 ```
 This will generate 2048-bit Morgan fingerprints and Mordred descriptors for the compounds in all datasets and separate them into a train-test scaffold split. The preprocessed data will appear under `data/preprocessed`.
 
+### Details
+
+The scaffold used for the split is a Bemis-Murcko scaffold provided by RDKit with chirality preservation off. Molecules with no scaffold, e.g. molecules with no cycles, are grouped together.
+
+
+Only a subset of Mordred descriptors are kept for each dataset. Filtering is based entirely on the training datasets.
+
 # AutoML
 
 To fit predictors using the frameworks run the following:
@@ -118,3 +125,29 @@ This script generates evaluation performance comparison plots between vNN, the b
 ``` sh
 python visualization/plot_performance.py
 ```
+
+# Environment specs for publication
+
+
+
+
+| Spec         | Value                       |
+|--------------|-----------------------------|
+| Model        | Poweredge R740              |
+| Processor    | Intel Xeon Gold 6132 2.6GHz |
+| CPUs alloted | 2                           |
+| RAM alloted  | 16 GB                       |
+
+### vNN
+
+### AutoADMET
+| Spec         | Value                       |
+|--------------|-----------------------------|
+| Optuna trials | 25              |
+
+### AutoGluon
+
+### FLAML
+| Spec         | Value                       |
+|--------------|-----------------------------|
+| Time limit   | 75 minutes                  |
