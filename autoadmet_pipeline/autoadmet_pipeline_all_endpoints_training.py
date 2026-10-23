@@ -52,6 +52,7 @@ def conf_interval_dict(
 def test_performance_conf_intervals(
     y_test: np.ndarray,
     y_pred: np.ndarray,
+    y_pred_proba: np.ndarray,
 ) -> dict:
     """
     Get the the test metrics as confidence intervals.
@@ -69,7 +70,7 @@ def test_performance_conf_intervals(
         **conf_interval_dict(
             y_test, y_pred, "specificity", metrics.recall_score, pos_label=0
         ),
-        **conf_interval_dict(y_test, y_pred, "rocauc", metrics.roc_auc_score),
+        **conf_interval_dict(y_test, y_pred_proba, "rocauc", metrics.roc_auc_score),
     }
 
 
@@ -161,6 +162,7 @@ def save_top_model_metrics(
             **test_performance_conf_intervals(
                 pred_df_best["True_Label"].to_numpy(),
                 pred_df_best["Predicted_Label"].to_numpy(),
+                pred_df_best["Predicted_Probability"].to_numpy(),
             ),
             "kappa_val": kappa_val_best,
             "train_time": train_time,
@@ -173,6 +175,7 @@ def save_top_model_metrics(
             **test_performance_conf_intervals(
                 pred_df_ensemble["True_Label"].to_numpy(),
                 pred_df_ensemble["Predicted_Label"].to_numpy(),
+                pred_df_ensemble["Predicted_Probability"].to_numpy(),
             ),
             "kappa_val": kappa_val_ensemble,
             "train_time": train_time + ensemble_train_time,

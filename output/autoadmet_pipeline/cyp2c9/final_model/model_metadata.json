@@ -3,13 +3,13 @@
   "model": "RandomForest",
   "scaler_type": "None",
   "hyperparameters": {
-    "n_estimators": 1000,
+    "n_estimators": 800,
     "max_depth": 30,
-    "min_samples_split": 10,
-    "min_samples_leaf": 3,
+    "min_samples_split": 3,
+    "min_samples_leaf": 1,
     "max_features": "sqrt"
   },
-  "timestamp": "2026-07-02T09:27:36.570991",
+  "timestamp": "2026-10-21T21:30:30.965338",
   "model_file": "Morgan_RandomForest_model.pkl",
   "scaler_file": "Morgan_RandomForest_scaler.pkl",
   "training_samples": 6089,

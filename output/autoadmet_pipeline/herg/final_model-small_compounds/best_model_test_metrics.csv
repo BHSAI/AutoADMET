@@ -1,6 +1,6 @@
 Metric,Value
-ROC_AUC,0.48531267048554283
-PR_AUC,0.37452216763652657
+ROC_AUC,0.5636593016912166
+PR_AUC,0.4135976829238316
 Accuracy,0.624
 Sensitivity,0.0
 Specificity,1.0
@@ -9,5 +9,5 @@ Precision,0.0
 F1,0.0
 MCC,0.0
 Kappa,0.0
-Prediction Time,0.02631097612902522
-Prediction Time Normalized,5.262195225805044e-06
+Prediction Time,0.03390177500114078
+Prediction Time Normalized,6.780355000228156e-06

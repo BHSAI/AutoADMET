@@ -3,7 +3,7 @@
   "base_models": [
     {
       "descriptor": "Mordred",
-      "model": "XGBoost"
+      "model": "RandomForest"
     },
     {
       "descriptor": "Mordred",
@@ -11,7 +11,7 @@
     },
     {
       "descriptor": "Mordred",
-      "model": "RandomForest"
+      "model": "XGBoost"
     },
     {
       "descriptor": "Mordred",
@@ -26,39 +26,39 @@
   "top_k": 5,
   "selection_metric": "Kappa",
   "hyperparameters": {
-    "Mordred_XGBoost": {
-      "n_estimators": 900,
-      "learning_rate": 0.02013386760375924,
-      "max_depth": 9,
-      "subsample": 0.6335517595190473,
-      "colsample_bytree": 0.5989092486529864,
-      "min_child_weight": 5
+    "Mordred_RandomForest": {
+      "n_estimators": 600,
+      "max_depth": 20,
+      "min_samples_split": 2,
+      "min_samples_leaf": 1,
+      "max_features": "sqrt"
     },
     "Mordred_LightGBM": {
-      "n_estimators": 400,
-      "learning_rate": 0.10981896703043911,
-      "max_depth": 12,
-      "num_leaves": 106,
-      "lambda_l1": 1.1884249911887058e-05,
-      "lambda_l2": 0.0022131599755294677
+      "n_estimators": 600,
+      "learning_rate": 0.0888252256981577,
+      "max_depth": 10,
+      "num_leaves": 254,
+      "lambda_l1": 2.153132626371108e-08,
+      "lambda_l2": 0.0075651360030586385
     },
-    "Mordred_RandomForest": {
-      "n_estimators": 700,
-      "max_depth": 14,
-      "min_samples_split": 4,
-      "min_samples_leaf": 2,
-      "max_features": "log2"
+    "Mordred_XGBoost": {
+      "n_estimators": 900,
+      "learning_rate": 0.02032190662973173,
+      "max_depth": 12,
+      "subsample": 0.9275904630774441,
+      "colsample_bytree": 0.5125874256121442,
+      "min_child_weight": 7
     },
     "Mordred_LogisticRegression": {
-      "C": 13.788133920678682,
-      "solver": "liblinear"
+      "C": 11.562074014263121,
+      "solver": "lbfgs"
     },
     "Morgan_LogisticRegression": {
-      "C": 0.29803588057119235,
-      "solver": "lbfgs"
+      "C": 0.6183652148593408,
+      "solver": "saga"
     }
   },
-  "timestamp": "2026-07-02T09:23:27.452180",
+  "timestamp": "2026-10-20T22:15:58.514687",
   "training_samples": 1709,
   "test_samples": 427
 }

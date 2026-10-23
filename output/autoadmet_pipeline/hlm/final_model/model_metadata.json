@@ -1,18 +1,18 @@
 {
   "descriptor": "Morgan",
-  "model": "XGBoost",
+  "model": "LightGBM",
   "scaler_type": "None",
   "hyperparameters": {
-    "n_estimators": 800,
-    "learning_rate": 0.05167533568344356,
+    "n_estimators": 900,
+    "learning_rate": 0.03246619816143446,
     "max_depth": 9,
-    "subsample": 0.916751720413175,
-    "colsample_bytree": 0.6191899957060044,
-    "min_child_weight": 2
+    "num_leaves": 116,
+    "lambda_l1": 1.1817321416883636e-06,
+    "lambda_l2": 0.006791778072116302
   },
-  "timestamp": "2026-07-02T09:26:58.542460",
-  "model_file": "Morgan_XGBoost_model.pkl",
-  "scaler_file": "Morgan_XGBoost_scaler.pkl",
+  "timestamp": "2026-10-21T01:35:14.451017",
+  "model_file": "Morgan_LightGBM_model.pkl",
+  "scaler_file": "Morgan_LightGBM_scaler.pkl",
   "training_samples": 2462,
   "test_samples": 615,
   "feature_dim": 2048

@@ -4,12 +4,12 @@
   "scaler_type": "MinMaxScaler",
   "hyperparameters": {
     "n_estimators": 900,
-    "max_depth": 23,
-    "min_samples_split": 7,
+    "max_depth": 19,
+    "min_samples_split": 2,
     "min_samples_leaf": 2,
     "max_features": "log2"
   },
-  "timestamp": "2026-07-02T09:23:50.350718",
+  "timestamp": "2026-10-20T19:10:03.637776",
   "model_file": "Mordred_RandomForest_model.pkl",
   "scaler_file": "Mordred_RandomForest_scaler.pkl",
   "training_samples": 1110,

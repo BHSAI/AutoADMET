@@ -3,14 +3,14 @@
   "model": "XGBoost",
   "scaler_type": "MinMaxScaler",
   "hyperparameters": {
-    "n_estimators": 700,
-    "learning_rate": 0.0491789678890768,
-    "max_depth": 3,
-    "subsample": 0.9181628050689206,
-    "colsample_bytree": 0.7433389093566563,
-    "min_child_weight": 6
+    "n_estimators": 600,
+    "learning_rate": 0.006958354305196723,
+    "max_depth": 9,
+    "subsample": 0.661741000876686,
+    "colsample_bytree": 0.6875412913140602,
+    "min_child_weight": 1
   },
-  "timestamp": "2026-07-02T09:22:16.329426",
+  "timestamp": "2026-10-20T23:55:17.967790",
   "model_file": "Mordred_XGBoost_model.pkl",
   "scaler_file": "Mordred_XGBoost_scaler.pkl",
   "training_samples": 525,

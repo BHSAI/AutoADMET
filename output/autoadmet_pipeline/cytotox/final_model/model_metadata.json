@@ -1,19 +1,19 @@
 {
-  "descriptor": "Morgan",
+  "descriptor": "Mordred",
   "model": "LightGBM",
-  "scaler_type": "None",
+  "scaler_type": "MinMaxScaler",
   "hyperparameters": {
-    "n_estimators": 700,
-    "learning_rate": 0.13275584007373772,
-    "max_depth": 9,
-    "num_leaves": 25,
-    "lambda_l1": 0.001427963447285434,
-    "lambda_l2": 0.29500744281008673
+    "n_estimators": 900,
+    "learning_rate": 0.194737502000809,
+    "max_depth": 8,
+    "num_leaves": 232,
+    "lambda_l1": 0.00012469120766270085,
+    "lambda_l2": 2.1599674389519288e-08
   },
-  "timestamp": "2026-07-02T09:26:38.274037",
-  "model_file": "Morgan_LightGBM_model.pkl",
-  "scaler_file": "Morgan_LightGBM_scaler.pkl",
+  "timestamp": "2026-10-22T00:13:27.639838",
+  "model_file": "Mordred_LightGBM_model.pkl",
+  "scaler_file": "Mordred_LightGBM_scaler.pkl",
   "training_samples": 4706,
   "test_samples": 1177,
-  "feature_dim": 2048
+  "feature_dim": 439
 }

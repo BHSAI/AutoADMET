@@ -1,18 +1,18 @@
 {
   "descriptor": "Mordred",
-  "model": "LightGBM",
+  "model": "XGBoost",
   "scaler_type": "MinMaxScaler",
   "hyperparameters": {
     "n_estimators": 600,
-    "learning_rate": 0.055932749438959393,
+    "learning_rate": 0.008177455071932646,
     "max_depth": 11,
-    "num_leaves": 72,
-    "lambda_l1": 3.33475091298805e-08,
-    "lambda_l2": 0.03694332504284113
+    "subsample": 0.6594334522789418,
+    "colsample_bytree": 0.8149591088290841,
+    "min_child_weight": 1
   },
-  "timestamp": "2026-07-02T09:26:47.524904",
-  "model_file": "Mordred_LightGBM_model.pkl",
-  "scaler_file": "Mordred_LightGBM_scaler.pkl",
+  "timestamp": "2026-10-21T05:03:58.894296",
+  "model_file": "Mordred_XGBoost_model.pkl",
+  "scaler_file": "Mordred_XGBoost_scaler.pkl",
   "training_samples": 5182,
   "test_samples": 1295,
   "feature_dim": 347

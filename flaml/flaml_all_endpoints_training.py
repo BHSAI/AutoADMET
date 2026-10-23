@@ -233,7 +233,7 @@ def save_top_model_metrics(
         **conf_interval_dict(
             y_test, y_pred, "specificity", metrics.recall_score, pos_label=0
         ),
-        **conf_interval_dict(y_test, y_pred, "rocauc", metrics.roc_auc_score),
+        **conf_interval_dict(y_test, y_pred_proba[:, 1], "rocauc", metrics.roc_auc_score),
         "kappa_val": 1 - automl.best_loss,
         "train_time": train_time,
         "pred_time": pred_time,

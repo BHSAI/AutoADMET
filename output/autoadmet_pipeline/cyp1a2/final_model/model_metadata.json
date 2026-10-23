@@ -3,14 +3,14 @@
   "model": "LightGBM",
   "scaler_type": "MinMaxScaler",
   "hyperparameters": {
-    "n_estimators": 600,
-    "learning_rate": 0.09187231714646413,
-    "max_depth": 4,
-    "num_leaves": 212,
-    "lambda_l1": 0.09037305548208684,
-    "lambda_l2": 0.017299751473964495
+    "n_estimators": 900,
+    "learning_rate": 0.056959476751852964,
+    "max_depth": 12,
+    "num_leaves": 252,
+    "lambda_l1": 1.7062521974173127e-08,
+    "lambda_l2": 8.849486627529264e-07
   },
-  "timestamp": "2026-07-02T09:25:21.755926",
+  "timestamp": "2026-10-21T07:16:56.727273",
   "model_file": "Mordred_LightGBM_model.pkl",
   "scaler_file": "Mordred_LightGBM_scaler.pkl",
   "training_samples": 5804,

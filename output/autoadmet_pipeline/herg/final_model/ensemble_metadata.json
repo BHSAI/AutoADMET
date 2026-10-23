@@ -27,37 +27,37 @@
   "selection_metric": "Kappa",
   "hyperparameters": {
     "Mordred_XGBoost": {
-      "n_estimators": 700,
-      "learning_rate": 0.0491789678890768,
-      "max_depth": 3,
-      "subsample": 0.9181628050689206,
-      "colsample_bytree": 0.7433389093566563,
-      "min_child_weight": 6
+      "n_estimators": 600,
+      "learning_rate": 0.006958354305196723,
+      "max_depth": 9,
+      "subsample": 0.661741000876686,
+      "colsample_bytree": 0.6875412913140602,
+      "min_child_weight": 1
     },
     "Mordred_LightGBM": {
-      "n_estimators": 900,
-      "learning_rate": 0.2968743215741803,
-      "max_depth": 4,
-      "num_leaves": 268,
-      "lambda_l1": 3.712723504421918e-06,
-      "lambda_l2": 1.093317330557917
+      "n_estimators": 800,
+      "learning_rate": 0.024007072845316297,
+      "max_depth": 6,
+      "num_leaves": 288,
+      "lambda_l1": 0.7816662839449294,
+      "lambda_l2": 2.4730602318920983e-07
     },
     "Mordred_RandomForest": {
-      "n_estimators": 800,
-      "max_depth": 8,
-      "min_samples_split": 3,
+      "n_estimators": 500,
+      "max_depth": 20,
+      "min_samples_split": 4,
       "min_samples_leaf": 1,
-      "max_features": "sqrt"
+      "max_features": "log2"
     },
     "Morgan_Bayesian": {
-      "alpha": 1.2662625658214366
+      "alpha": 1.2776623900551496
     },
     "Morgan_LogisticRegression": {
-      "C": 0.2176981663540258,
+      "C": 0.2428565718512759,
       "solver": "saga"
     }
   },
-  "timestamp": "2026-07-02T09:22:14.713074",
+  "timestamp": "2026-10-20T23:55:10.780728",
   "training_samples": 525,
   "test_samples": 131
 }

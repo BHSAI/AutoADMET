@@ -245,7 +245,7 @@ def save_top_model_metrics(
     start = time.perf_counter()
     y_pred: np.ndarray = predictor.predict(test)  # type: ignore
     pred_time = time.perf_counter() - start
-    y_pred_proba = predictor.predict_proba(test)
+    y_pred_proba: np.ndarray = predictor.predict_proba(test)  # type: ignore
 
     performance = {
         **conf_interval_dict(y_test, y_pred, "kappa", metrics.cohen_kappa_score),
@@ -256,7 +256,7 @@ def save_top_model_metrics(
         **conf_interval_dict(
             y_test, y_pred, "specificity", metrics.recall_score, pos_label=0
         ),
-        **conf_interval_dict(y_test, y_pred, "rocauc", metrics.roc_auc_score),
+        **conf_interval_dict(y_test, y_pred_proba[1], "rocauc", metrics.roc_auc_score),
         "kappa_val": predictor.leaderboard()["score_val"][0],
         "train_time": train_time,
         "pred_time": pred_time,

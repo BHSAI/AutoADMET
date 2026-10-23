@@ -3,19 +3,19 @@
   "base_models": [
     {
       "descriptor": "Mordred",
-      "model": "XGBoost"
-    },
-    {
-      "descriptor": "Mordred",
       "model": "RandomForest"
     },
     {
       "descriptor": "Mordred",
-      "model": "LightGBM"
+      "model": "XGBoost"
     },
     {
       "descriptor": "Mordred",
       "model": "LogisticRegression"
+    },
+    {
+      "descriptor": "Mordred",
+      "model": "LightGBM"
     },
     {
       "descriptor": "Morgan",
@@ -26,39 +26,39 @@
   "top_k": 5,
   "selection_metric": "Kappa",
   "hyperparameters": {
-    "Mordred_XGBoost": {
-      "n_estimators": 200,
-      "learning_rate": 0.06786789844805004,
-      "max_depth": 7,
-      "subsample": 0.8451210164218432,
-      "colsample_bytree": 0.6124384349391055,
-      "min_child_weight": 6
-    },
     "Mordred_RandomForest": {
-      "n_estimators": 800,
-      "max_depth": 22,
-      "min_samples_split": 9,
+      "n_estimators": 900,
+      "max_depth": 18,
+      "min_samples_split": 5,
       "min_samples_leaf": 2,
-      "max_features": "sqrt"
+      "max_features": "log2"
     },
-    "Mordred_LightGBM": {
+    "Mordred_XGBoost": {
       "n_estimators": 500,
-      "learning_rate": 0.07406153924647432,
-      "max_depth": 12,
-      "num_leaves": 255,
-      "lambda_l1": 4.474568862689028e-07,
-      "lambda_l2": 0.32146750093574156
+      "learning_rate": 0.061992641549226325,
+      "max_depth": 8,
+      "subsample": 0.7154021643052715,
+      "colsample_bytree": 0.8576555832383252,
+      "min_child_weight": 7
     },
     "Mordred_LogisticRegression": {
-      "C": 59.311007916377434,
+      "C": 80.70368471814068,
       "solver": "lbfgs"
     },
+    "Mordred_LightGBM": {
+      "n_estimators": 900,
+      "learning_rate": 0.16442398443167064,
+      "max_depth": 4,
+      "num_leaves": 20,
+      "lambda_l1": 0.0020697444066479853,
+      "lambda_l2": 5.5198198653844834e-05
+    },
     "Morgan_LogisticRegression": {
-      "C": 0.5825057579497064,
+      "C": 0.39148253673899946,
       "solver": "saga"
     }
   },
-  "timestamp": "2026-07-02T09:23:09.781092",
+  "timestamp": "2026-10-21T03:48:04.105244",
   "training_samples": 650,
   "test_samples": 162
 }
