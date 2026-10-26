@@ -14,7 +14,7 @@ import adjustText
 datasets = pd.read_csv(Path(__file__).parents[1] / "data" / "dataset_config.csv")
 datasets = datasets.sort_values("FULL_SIZE").reset_index(drop=True)
 
-USE_EXTRA_FRAMEWORKS = True
+USE_EXTRA_FRAMEWORKS = False
 if USE_EXTRA_FRAMEWORKS:
     EXPORT_POSTFIX = "-extra_frameworks"
     SPREAD = 0.55
