@@ -6,6 +6,8 @@ from matplotlib.lines import Line2D
 from matplotlib.ticker import MaxNLocator
 from scipy.sparse import coo_array
 
+import seaborn as sns
+
 import vnn.variable_nearest_neighbor as vnn_lib
 
 datasets = pd.read_csv(Path(__file__).parents[1] / "data" / "dataset_config.csv")
@@ -37,11 +39,15 @@ def plot_train_test_similarity(
 
     # Plot
     fig = plt.figure(figsize=(10, 6))
-    plt.hist(mean_nn_dist, range=(0, 1), bins=50)
-    ax = fig.axes[0]
+    ax = plt.axes()
+    sns.histplot(mean_nn_dist, bins=50, binrange=(0, 1), ax=ax)
     y_lower, y_upper = ax.get_ybound()
     plt.vlines(
-        [mean_nn_dist.mean()], y_lower, y_upper, linestyles="dashed", colors="black"
+        [mean_nn_dist.mean()],
+        y_lower,
+        y_upper,
+        linestyles="dashed",
+        colors="black",
     )
     ax.get_yaxis().set_major_locator(MaxNLocator(integer=True))
     ax.grid(color="#55555530")
@@ -67,8 +73,9 @@ def main():
         plot_train_test_similarity(
             dataset=dataset,
             display_name=display_name,
-            out_file=directory / f"{dataset}.png"
+            out_file=directory / f"{dataset}.png",
         )
+
 
 if __name__ == "__main__":
     main()
