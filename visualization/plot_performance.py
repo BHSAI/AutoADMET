@@ -25,7 +25,13 @@ else:
     FIGSIZE = (12, 6)
 
 TICK_WIDTH = 0.08
-METRICS = ["kappa", "accuracy", "sensitivity", "specificity", "rocauc"]
+METRICS = {
+    "kappa": "Kappa",
+    "accuracy": "Accuracy",
+    "sensitivity": "Sensitivity",
+    "specificity": "Specificity",
+    "rocauc": "ROC-AUC",
+}
 
 FEATURIZATIONS = ["morgan_fp", "mordred_desc"]
 
@@ -229,7 +235,7 @@ def plot_test_performance(
     combined_performance_df: pd.DataFrame,
     plot_configs: dict[tuple[str, str], tuple[str, str, float, str]],
 ):
-    for metric in METRICS:
+    for metric, metric_display in METRICS.items():
         fig = plt.figure(figsize=FIGSIZE, dpi=300)
         ax = fig.add_subplot()
         ax.set_ylim(bottom=0, top=1)
@@ -239,9 +245,9 @@ def plot_test_performance(
             rotation=45,
             ha="right",
         )
-        ax.set_title(f"Test {metric.capitalize()} 95% Confidence Interval")
+        ax.set_title(f"Test {metric_display} 95% Confidence Interval")
         ax.set_xlabel("Model")
-        ax.set_ylabel(metric.capitalize())
+        ax.set_ylabel(metric_display)
         for _, row in combined_performance_df.iterrows():
             dataset, framework, featurization = row[
                 ["dataset", "framework", "featurization"]
