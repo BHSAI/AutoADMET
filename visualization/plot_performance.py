@@ -293,6 +293,7 @@ def plot_test_performance(
             ]
 
         ax.legend(*zip(*handles))
+        # ax.legend(*zip(*handles), loc="upper right", bbox_to_anchor=(0.92, 1)) # The customer is always right!
 
         fig.savefig(
             f"visualization/out/confidence_intervals.{metric}{EXPORT_POSTFIX}.png",
